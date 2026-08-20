@@ -1,0 +1,89 @@
+name: dashcore
+description: "DashCore - Open-source OBD2 dashboard app for real-time car data and diagnostics."
+homepage: https://github.com/iUnreallx/DashCore
+version: 1.0.2+4
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  flutter_svg: ^2.2.3
+  provider: ^6.1.5+1
+  flutter_blue_classic: ^0.0.9
+  permission_handler: ^12.0.1
+  device_info_plus: ^12.4.0
+  flutter_native_splash: ^2.4.7
+  image_picker: ^1.1.2
+  file_picker: ^8.1.2
+  model_viewer_plus: ^1.9.3
+  maplibre_gl: ^0.26.2
+  geolocator: ^13.0.1
+  location: ^7.0.1
+  nowplaying: ^3.0.3
+  package_info_plus: ^8.3.1
+  shared_preferences: ^2.5.5
+  supabase_flutter: ^2.17.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.14.4
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/svg/
+    - assets/images/svg/dashboard/
+    - assets/images/svg/bottomBar/
+    - assets/images/png/
+    - assets/icons/
+    - assets/models/OPTIMA2012.GLB
+
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/dashcore_logo.png"
+  adaptive_icon_background: "#080B10"
+  adaptive_icon_foreground: "assets/icons/dashcore_logo.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+
+  web:
+    generate: true
+    image_path: "assets/icons/app_ico.png"
+
+  windows:
+    generate: true
+    image_path: "assets/icons/app_ico.png"
+
+flutter_native_splash:
+  color: "#080B10"
+  image: assets/icons/dashcore_logo.png
+  color_dark: "#080B10"
+  image_dark: assets/icons/dashcore_logo.png
+  android: true
+  ios: true
+  web: false
+
+  android_12:
+    color: "#080B10"
+    image: assets/icons/splash_logo.png
+    icon_background_color: "#080B10"

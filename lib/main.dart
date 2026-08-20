@@ -1,0 +1,159 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'services/bluetooth_obd_connection.dart';
+import 'providers/obd_provider.dart';
+import 'providers/bluetooth_provider.dart';
+import 'providers/dash_settings_provider.dart';
+import 'core/app_themes.dart';
+import 'screens/root_screen.dart';
+import 'screens/auth_screen.dart';
+import 'widget/reconnection_banner.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: 'https://xxswkevnllmebstkjokv.supabase.co',
+    anonKey: 'sb_publishable_1K2zZcDExAnXPfAA-4tdUw_S0xNrgCW',
+  );
+
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<DashSettingsProvider>(
+          create: (_) => DashSettingsProvider(),
+        ),
+        ChangeNotifierProvider<BluetoothProvider>(
+          create: (_) => BluetoothProvider(),
+        ),
+        ChangeNotifierProxyProvider<BluetoothProvider, ObdProvider>(
+          create: (context) {
+            return ObdProvider(
+              BluetoothObdConnection(
+                context.read<BluetoothProvider>(),
+              ),
+            );
+          },
+          update: (
+              context,
+              bluetoothProvider,
+              obdProvider,
+              ) {
+            obdProvider!.updateConnection(
+              BluetoothObdConnection(
+                bluetoothProvider,
+              ),
+            );
+
+            return obdProvider;
+          },
+        ),
+      ],
+      child: const DashCoreApp(),
+    ),
+  );
+}
+
+class DashCoreApp extends StatelessWidget {
+  const DashCoreApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'DashCore',
+      debugShowCheckedModeBanner: false,
+      theme: AppThemes.darkTheme,
+      home: const AuthGate(),
+      builder: (context, child) {
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            child ?? const SizedBox.shrink(),
+
+            Consumer2<BluetoothProvider, ObdProvider>(
+              builder: (
+                  context,
+                  bluetoothProvider,
+                  obdProvider,
+                  _,
+                  ) {
+                final bool isBluetoothReconnecting =
+                    bluetoothProvider.isReconnectingBackground;
+
+                final bool isObdRecovering =
+                    obdProvider.isRealMode &&
+                        obdProvider.state ==
+                            ObdConnectionState.initializing;
+
+                final bool showBanner =
+                    isBluetoothReconnecting ||
+                        isObdRecovering;
+
+                final String message =
+                isBluetoothReconnecting
+                    ? bluetoothProvider.backgroundMessage
+                    : isObdRecovering
+                    ? obdProvider.initMessage
+                    : '';
+
+                return AnimatedPositioned(
+                  duration: const Duration(
+                    milliseconds: 400,
+                  ),
+                  curve: Curves.easeOutCubic,
+                  top: showBanner
+                      ? MediaQuery.of(context).padding.top + 10
+                      : -100,
+                  left: 16,
+                  right: 16,
+                  child: IgnorePointer(
+                    ignoring: !showBanner,
+                    child: AnimatedOpacity(
+                      duration: const Duration(
+                        milliseconds: 300,
+                      ),
+                      opacity: showBanner ? 1.0 : 0.0,
+                      child: ReconnectionBanner(
+                        message: message,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final supabase = Supabase.instance.client;
+
+    return StreamBuilder<AuthState>(
+      stream: supabase.auth.onAuthStateChange,
+      builder: (context, snapshot) {
+        final session = supabase.auth.currentSession;
+
+        if (session != null) {
+          return const RootScreen();
+        }
+
+        return const AuthScreen();
+      },
+    );
+  }
+}

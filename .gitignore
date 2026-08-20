@@ -1,0 +1,57 @@
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+
+# Build
+build/
+android/.gradle/
+android/app/build/
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Android
+android/local.properties
+android/.cxx/
+
+# iOS
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+
+# macOS
+macos/Pods/
+macos/Flutter/ephemeral/
+
+# Windows
+windows/flutter/ephemeral/
+
+# Linux
+linux/flutter/ephemeral/
+
+# Logs
+*.log
+
+# Temporary
+*.tmp
+*.temp
+
+# Generated files
+coverage/
+# DashCore local build/output files
+android/build_error.txt
+android/gradle.properties.backup
+build_error.txt
+build_log.txt
+dashcore-beta.apk
+*.apk
+
+# Flutter/Android generated files
+android/app/build/
+android/build/
