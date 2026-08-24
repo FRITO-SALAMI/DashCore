@@ -1,24 +1,70 @@
-\# DashCore
+\# 🚗 DashCore
 
 
 
-\*\*DashCore\*\* is an open-source Android automotive dashboard focused on \*\*OBD2 vehicle telemetry and diagnostics\*\*.
+\### The next-generation digital dashboard for Android
 
 
 
-The project is designed to provide a modern, customizable and easy-to-use dashboard for displaying real-time vehicle information through compatible OBD2 adapters.
+DashCore transforms your Android head unit into a modern, customizable digital dashboard with \*\*OBD2 telemetry, Bluetooth connectivity, 3D vehicle visualization and premium dashboard themes\*\*.
 
 
 
-\## Features
+Designed for Android automotive displays and car enthusiasts who want more than a traditional dashboard.
 
 
 
-\* OBD2 connectivity
+\---
 
-\* Real-time vehicle telemetry
 
-\* Engine RPM
+
+\## 📱 Download DashCore
+
+
+
+\### Latest Release — v1.0.0
+
+
+
+\[!\[Download 64-bit](https://img.shields.io/badge/Download-64--bit-111111?style=for-the-badge\\\&logo=android)](https://github.com/FRITO-SALAMI/DashCore/releases/tag/v1.0.0)
+
+
+
+\[!\[Download 32-bit](https://img.shields.io/badge/Download-32--bit-111111?style=for-the-badge\\\&logo=android)](https://github.com/FRITO-SALAMI/DashCore/releases/tag/v1.0.0)
+
+
+
+\*\*Compatible APKs included in the release:\*\*
+
+
+
+\* `DashCore64x.apk` — ARM64 devices
+
+\* `DashCore32x.apk` — 32-bit ARM devices
+
+
+
+\[View all releases →](https://github.com/FRITO-SALAMI/DashCore/releases)
+
+
+
+\---
+
+
+
+\## ⚡ Features
+
+
+
+\### 🔌 OBD2 Connectivity
+
+
+
+Connect DashCore to your vehicle through compatible Bluetooth OBD2 adapters and monitor real-time vehicle data.
+
+
+
+\* RPM
 
 \* Vehicle speed
 
@@ -26,109 +72,219 @@ The project is designed to provide a modern, customizable and easy-to-use dashbo
 
 \* Battery voltage
 
-\* Customizable dashboard interface
+\* Fuel data
 
-\* Multiple dashboard visual styles
+\* Engine telemetry
 
-\* Dark interface designed for in-vehicle use
+\* Diagnostic information
 
-\* Diagnostic and connection monitoring
+\* Automatic reconnection
 
 
 
-\## OBD2 Compatibility
+\---
 
 
 
-DashCore is designed to work with \*\*ELM327-compatible OBD2 adapters\*\*.
+\## 🎨 Premium Dashboard Themes
 
 
 
-Adapter compatibility may vary depending on the hardware, firmware and connection method used.
+DashCore includes multiple dashboard styles designed for different driving experiences.
 
 
 
-\## Screenshots
+\* Classic Sport
 
+\* Modern
 
+\* Tesla Style
 
-<p align="center">
+\* Racing
 
-&#x20; <img src="docs/screenshots/1.png" width="48%" />
+\* Racing HUD
 
-&#x20; <img src="docs/screenshots/2.png" width="48%" />
+\* Retro LCD
 
-</p>
+\* Sporty
 
+\* Glow Red
 
+\* Hellish
 
-\## Installation
+\* Purple
 
+\* EV Cluster
 
+\* Custom Gauge layouts
 
-Download the latest available Android APK from the \*\*Releases\*\* section of this repository.
 
 
+More dashboard experiences are continuously being developed.
 
-Install the APK on a compatible Android device and launch DashCore.
 
 
+\---
 
-\## Building From Source
 
 
+\## 🚘 3D Vehicle Visualization
 
-\### Requirements
 
 
+DashCore supports interactive \*\*3D vehicle models\*\* directly inside the application.
 
-\* Flutter SDK
 
-\* Android SDK
 
-\* Android build tools
+Current vehicle models include:
 
-\* Android device or emulator
 
 
+\* Honda Civic 2016
 
-\### Clone the repository
+\* Kia Optima 2012
 
+\* Kia Optima 2015
 
+\* Nissan H1
 
-```bash
+\* Hyundai Sonata LF
 
-git clone <repository-url>
+\* Hyundai Sonata N Line
 
+\* Hyundai Sonata Y20
 
 
-cd DashCore
 
-```
+\---
 
 
 
-\### Build the Android application
+\## 📡 Bluetooth
 
 
 
-The Android application is built from the `android` directory:
+DashCore includes a dedicated connection system designed for automotive Bluetooth devices.
 
 
 
-```bash
+The connection layer handles:
 
-cd android
 
-```
 
+\* Device discovery
 
+\* Bluetooth permissions
 
-Then use the appropriate Flutter/Gradle build command for your development environment.
+\* OBD adapter connections
 
+\* Connection state
 
+\* Reconnection
 
-\## Project Structure
+\* OBD communication
+
+\* ELM327 communication
+
+
+
+\---
+
+
+
+\## 🖥️ Designed for Android Head Units
+
+
+
+DashCore is designed with automotive Android displays in mind.
+
+
+
+The interface focuses on:
+
+
+
+\* Landscape layouts
+
+\* Large readable telemetry
+
+\* Touch-friendly controls
+
+\* High-contrast dashboards
+
+\* Automotive-style interfaces
+
+\* Fast access to vehicle information
+
+
+
+\---
+
+
+
+\## 🛠️ Technology
+
+
+
+DashCore is built with:
+
+
+
+\* \*\*Flutter\*\*
+
+\* \*\*Dart\*\*
+
+\* \*\*Android\*\*
+
+\* \*\*Bluetooth\*\*
+
+\* \*\*OBD2 / ELM327\*\*
+
+\* \*\*Firebase\*\*
+
+\* \*\*Supabase\*\*
+
+\* \*\*3D GLB models\*\*
+
+
+
+\---
+
+
+
+\## 📸 Preview
+
+
+
+\### Dashboard
+
+
+
+!\[DashCore Dashboard](docs/screenshots/1.png)
+
+
+
+\### Connection
+
+
+
+!\[DashCore Connection](docs/assets/screen-connection.webp)
+
+
+
+\### Dashboard Preview
+
+
+
+!\[DashCore Dashboard](docs/assets/screen-dashboard.webp)
+
+
+
+\---
+
+
+
+\## 🏗️ Project Structure
 
 
 
@@ -136,63 +292,209 @@ Then use the appropriate Flutter/Gradle build command for your development envir
 
 DashCore/
 
-├── android/        # Android configuration and build files
+├── android/
 
-├── assets/         # Application assets
+├── assets/
 
-├── docs/           # Project documentation and screenshots
+│   ├── fonts/
 
-├── ios/             # iOS project files
+│   ├── icon/
 
-├── lib/             # Flutter application source code
+│   ├── images/
 
-├── test/            # Tests
+│   └── models/
 
-└── web/             # Web project files
+├── docs/
+
+├── ios/
+
+├── lib/
+
+│   ├── core/
+
+│   ├── models/
+
+│   ├── obd/
+
+│   ├── providers/
+
+│   ├── screens/
+
+│   ├── services/
+
+│   ├── utils/
+
+│   └── widget/
+
+├── test/
+
+├── web/
+
+├── pubspec.yaml
+
+└── README.md
 
 ```
 
 
 
-\## Development Status
+\---
 
 
 
-DashCore is currently under active development.
+\## 🚀 Development
 
 
 
-Features, OBD2 compatibility and dashboard functionality may change as the project evolves.
+Clone the repository:
 
 
 
-\## Roadmap
+```bash
+
+git clone https://github.com/FRITO-SALAMI/DashCore.git
+
+```
 
 
 
-Future development will focus on improving:
+Enter the project:
 
 
 
-\* OBD2 connection stability
+```bash
 
-\* Telemetry reliability
+cd DashCore
 
-\* Dashboard customization
-
-\* Vehicle data visualization
-
-\* Diagnostic functionality
-
-\* Android automotive experience
+```
 
 
 
-\## License
+Install dependencies:
 
 
 
-This project is open source. See the `LICENSE` file for details.
+```bash
+
+flutter pub get
+
+```
+
+
+
+Run the application:
+
+
+
+```bash
+
+flutter run
+
+```
+
+
+
+\---
+
+
+
+\## 📦 Building Android
+
+
+
+For a release build:
+
+
+
+```bash
+
+flutter build apk --release
+
+```
+
+
+
+The generated APK can be found under:
+
+
+
+```text
+
+build/app/outputs/flutter-apk/
+
+```
+
+
+
+\---
+
+
+
+\## 🔐 Privacy \& Security
+
+
+
+DashCore does not include private source code, development logs or local diagnostic files in the repository.
+
+
+
+Configuration files containing environment-specific credentials should be handled separately from the public source tree.
+
+
+
+\---
+
+
+
+\## 📄 License
+
+
+
+See \[LICENSE](LICENSE).
+
+
+
+\---
+
+
+
+\## 🌐 Links
+
+
+
+\*\*GitHub\*\*
+
+
+
+https://github.com/FRITO-SALAMI/DashCore
+
+
+
+\*\*Latest Release\*\*
+
+
+
+https://github.com/FRITO-SALAMI/DashCore/releases/tag/v1.0.0
+
+
+
+\---
+
+
+
+<p align="center">
+
+
+
+\### 🚗 DashCore
+
+
+
+\*\*Your car. Your data. Your dashboard.\*\*
+
+
+
+</p>
 
 
 
