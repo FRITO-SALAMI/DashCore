@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/analytics_service.dart';
 
 enum UpdateStatus { upToDate, available, checking, error }
 
@@ -9,6 +10,7 @@ class UpdateDialog extends StatefulWidget {
   final String? downloadUrl;
   final String? releaseNotes;
   final UpdateStatus initialStatus;
+  final bool isMandatory;
 
   const UpdateDialog({
     super.key,
@@ -17,6 +19,7 @@ class UpdateDialog extends StatefulWidget {
     this.downloadUrl,
     this.releaseNotes,
     this.initialStatus = UpdateStatus.available,
+    this.isMandatory = false,
   });
 
   @override
@@ -151,27 +154,40 @@ class _UpdateDialogState extends State<UpdateDialog> {
             const SizedBox(height: 32),
             Row(
               children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      'CERRAR',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.3),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
+                if (!widget.isMandatory || _status != UpdateStatus.available)
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        if (_status == UpdateStatus.available) {
+                          AnalyticsService.instance.logEvent('app_update_ignored', data: {
+                            'version': widget.newVersion,
+                          });
+                        }
+                        Navigator.pop(context);
+                      },
+                      child: Text(
+                        'CERRAR',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.3),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                if (_status == UpdateStatus.available)
+                if (_status == UpdateStatus.available && !widget.isMandatory)
                   const SizedBox(width: 16),
                 if (_status == UpdateStatus.available)
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
+                        AnalyticsService.instance.logEvent('app_update_clicked', data: {
+                          'version': widget.newVersion,
+                        });
                         _launchUrl();
-                        Navigator.pop(context);
+                        if (!widget.isMandatory) {
+                          Navigator.pop(context);
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: statusColor,

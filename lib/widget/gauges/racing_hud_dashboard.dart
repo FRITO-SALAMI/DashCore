@@ -4,6 +4,7 @@ import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'package:provider/provider.dart';
 import '../../providers/obd_provider.dart';
 import '../../providers/dash_settings_provider.dart';
+import '../../widgets/rpm_warning_animation.dart';
 
 class RacingHudDashboard extends StatelessWidget {
   const RacingHudDashboard({super.key});
@@ -181,11 +182,6 @@ class _MainCluster extends StatelessWidget {
                       fit: StackFit.expand,
                       children: [
                         Positioned(top: constraints.maxHeight * .28, left: 0, right: 0, child: _SpeedNumber(speed: speed, unit: speedUnit, accentColor: accentColor)),
-                        Positioned(
-                          top: constraints.maxHeight * .48, left: constraints.maxWidth * .15, right: constraints.maxWidth * .15,
-                          bottom: constraints.maxHeight * .15,
-                          child: _VehicleGraphic(modelPath: modelPath, accentColor: accentColor),
-                        ),
                         Positioned(bottom: constraints.maxHeight * .075, left: constraints.maxWidth * .28, right: constraints.maxWidth * .28, child: _FuelIndicator(percent: fuelPercent, accentColor: accentColor)),
                       ],
                     ),
@@ -255,49 +251,6 @@ class _SpeedGaugePainter extends CustomPainter {
   bool shouldRepaint(covariant _SpeedGaugePainter oldDelegate) => oldDelegate.speed != speed;
 }
 
-class _VehicleGraphic extends StatelessWidget {
-  final String modelPath;
-  final Color accentColor;
-  const _VehicleGraphic({required this.modelPath, required this.accentColor});
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Positioned.fill(
-          child: ModelViewer(
-            backgroundColor: Colors.transparent,
-            src: modelPath,
-            alt: "Vehicle 3D Model",
-            autoRotate: false,
-            cameraControls: false,
-            disableZoom: true,
-            disablePan: true,
-            cameraOrbit: '180deg 80deg 4m', // Looking at the rear
-            exposure: 1.0,
-            shadowIntensity: 0,
-          ),
-        ),
-        CustomPaint(painter: _VehicleOverlayPainter(accentColor: accentColor)),
-      ],
-    );
-  }
-}
-
-class _VehicleOverlayPainter extends CustomPainter {
-  final Color accentColor;
-  _VehicleOverlayPainter({required this.accentColor});
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final ringPaint = Paint()..style = PaintingStyle.stroke..strokeWidth = 1..color = accentColor.withOpacity(.14);
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy), width: size.width * .86, height: size.height * .68), ringPaint);
-  }
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
 class _FuelIndicator extends StatelessWidget {
   final int percent;
   final Color accentColor;
@@ -330,7 +283,29 @@ class _InfoPanel extends StatelessWidget {
       child: Column(
         children: [
           _InfoHeader(connected: connected, accentColor: accentColor),
-          Expanded(child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [_PrimaryStats(coolant: coolant, voltage: voltage, accentColor: accentColor), const SizedBox(height: 12), _MetricCard(label: 'ENGINE RPM', value: rpm.toStringAsFixed(0), unit: 'RPM', progress: (rpm / 8000).clamp(0.0, 1.0), accentColor: accentColor), const Spacer(), _DriveFooter(accentColor: accentColor)]))),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _PrimaryStats(coolant: coolant, voltage: voltage, accentColor: accentColor),
+                  const SizedBox(height: 12),
+                  RpmWarningAnimation(
+                    rpm: rpm.toInt(),
+                    child: _MetricCard(
+                      label: 'ENGINE RPM',
+                      value: rpm.toStringAsFixed(0),
+                      unit: 'RPM',
+                      progress: (rpm / 8000).clamp(0.0, 1.0),
+                      accentColor: accentColor,
+                    ),
+                  ),
+                  const Spacer(),
+                  _DriveFooter(accentColor: accentColor)
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

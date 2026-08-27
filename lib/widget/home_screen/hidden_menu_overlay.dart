@@ -161,18 +161,19 @@ class HiddenMenuOverlay extends StatelessWidget {
                                   },
                                 ),
 
+                                const Divider(color: Colors.white10, height: 20, indent: 25, endIndent: 25),
+
                                 _SideMenuItem(
                                   icon: Icons.edit_rounded,
-                                  label: 'EDITAR',
+                                  label: loc.translate('edit').toUpperCase(),
                                   isSelected: false,
                                   onTap: () {
                                     onClose();
-
-                                    context
-                                        .read<DashSettingsProvider>()
-                                        .toggleEditMode();
+                                    context.read<DashSettingsProvider>().toggleEditMode();
                                   },
                                 ),
+
+                                const Divider(color: Colors.white10, height: 20, indent: 25, endIndent: 25),
 
                                 _SideMenuItem(
                                   icon:
@@ -181,7 +182,7 @@ class HiddenMenuOverlay extends StatelessWidget {
                                   loc.translate('settings').toUpperCase(),
                                   isSelected: false,
                                   onTap: () {
-                                    onItemSelected(4);
+                                    onItemSelected(5);
                                     onClose();
                                   },
                                 ),
@@ -196,18 +197,10 @@ class HiddenMenuOverlay extends StatelessWidget {
                                 _SideMenuItem(
                                   icon: Icons.system_update_rounded,
                                   label: 'ACTUALIZACIONES',
-                                  isSelected: false,
+                                  isSelected: currentIndex == 6,
                                   onTap: () {
+                                    onItemSelected(4);
                                     onClose();
-
-                                    ScaffoldMessenger.of(context)
-                                        .showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'BUSCANDO ACTUALIZACIONES...',
-                                        ),
-                                      ),
-                                    );
                                   },
                                 ),
                               ],

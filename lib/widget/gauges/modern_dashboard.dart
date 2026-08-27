@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../widgets/rpm_warning_animation.dart';
 import '../dashboard_background.dart';
 
 class ModernDashboard extends StatelessWidget {
@@ -62,19 +63,18 @@ class ModernDashboard extends StatelessWidget {
                 
                 // CENTER: QUANTUM SPEEDO
                 Stack(
-                  alignment: Alignment.bottomRight,
+                  alignment: Alignment.center,
+                  clipBehavior: Clip.none,
                   children: [
-                    _FuturisticSpeedo(speed: speed, rpm: rpm, color: currentColor),
+                    _FuturisticSpeedo(speed: speed, color: currentColor),
+                    
+                    // RPM Small Circle next to speed
                     Positioned(
-                      bottom: 40, right: 20,
-                      child: _TechGadget(
-                        label: 'ENGINE RPM',
-                        value: '${(rpm / 1000).toStringAsFixed(1)}',
-                        unit: 'K-RPM',
-                        icon: Icons.track_changes_rounded,
-                        color: currentColor,
-                        progress: (rpm / 8000).clamp(0.0, 1.0),
-                        scale: 0.6,
+                      right: -80,
+                      bottom: 40,
+                      child: RpmWarningAnimation(
+                        rpm: rpm,
+                        child: _RpmCircle(rpm: rpm, color: currentColor),
                       ),
                     ),
                   ],
@@ -89,6 +89,7 @@ class ModernDashboard extends StatelessWidget {
                   color: accentColor,
                   progress: ((voltage - 9) / 7).clamp(0.0, 1.0),
                   isRight: true,
+                  hideProgress: true,
                 ),
               ],
             ),
@@ -147,7 +148,7 @@ class _TechGadget extends StatelessWidget {
   final Color color;
   final double progress;
   final bool isRight;
-  final double scale;
+  final bool hideProgress;
 
   const _TechGadget({
     required this.label, 
@@ -157,38 +158,37 @@ class _TechGadget extends StatelessWidget {
     required this.color,
     required this.progress,
     this.isRight = false,
-    this.scale = 1.0,
+    this.hideProgress = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Transform.scale(
-      scale: scale,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: isRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (!isRight) Icon(icon, color: color, size: 20),
-              const SizedBox(width: 8),
-              Text(label, style: TextStyle(color: color.withOpacity(0.4), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2)),
-              const SizedBox(width: 8),
-              if (isRight) Icon(icon, color: color, size: 20),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(value, style: const TextStyle(color: Colors.white, fontSize: 56, fontWeight: FontWeight.w100)),
-              const SizedBox(width: 4),
-              Text(unit, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold)),
-            ],
-          ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: isRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!isRight) Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(color: color.withOpacity(0.4), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2)),
+            const SizedBox(width: 8),
+            if (isRight) Icon(icon, color: color, size: 20),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(value, style: const TextStyle(color: Colors.white, fontSize: 56, fontWeight: FontWeight.w100)),
+            const SizedBox(width: 4),
+            Text(unit, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        if (!hideProgress) ...[
           const SizedBox(height: 15),
           Container(
             width: 180,
@@ -210,7 +210,7 @@ class _TechGadget extends StatelessWidget {
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -303,9 +303,8 @@ class _HexGridPainter extends CustomPainter {
 
 class _FuturisticSpeedo extends StatelessWidget {
   final int speed;
-  final int rpm;
   final Color color;
-  const _FuturisticSpeedo({required this.speed, required this.rpm, required this.color});
+  const _FuturisticSpeedo({required this.speed, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -318,14 +317,12 @@ class _FuturisticSpeedo extends StatelessWidget {
           _QuantumRing(radius: 200, color: color.withOpacity(0.1), speed: 2),
           _QuantumRing(radius: 180, color: color.withOpacity(0.2), speed: -3),
           
-          // RPM Arc
-          SizedBox(
+          // Outer Glow Circle
+          Container(
             width: 380, height: 380,
-            child: CircularProgressIndicator(
-              value: (rpm / 8000).clamp(0.0, 1.0),
-              strokeWidth: 12,
-              color: color,
-              backgroundColor: Colors.white.withOpacity(0.02),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: color.withOpacity(0.05), width: 2),
             ),
           ),
 
@@ -353,6 +350,54 @@ class _FuturisticSpeedo extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _RpmCircle extends StatelessWidget {
+  final int rpm;
+  final Color color;
+
+  const _RpmCircle({required this.rpm, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            // Rotating Quantum Ring for RPM
+            _QuantumRing(radius: 75, color: color.withOpacity(0.15), speed: 1.5),
+            _QuantumRing(radius: 68, color: color.withOpacity(0.1), speed: -2),
+
+            SizedBox(
+              width: 140,
+              height: 140,
+              child: CircularProgressIndicator(
+                value: (rpm / 8000).clamp(0.0, 1.0),
+                strokeWidth: 8,
+                color: color,
+                backgroundColor: Colors.white.withOpacity(0.05),
+              ),
+            ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  (rpm / 1000).toStringAsFixed(1),
+                  style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
+                ),
+                Text(
+                  'K-RPM',
+                  style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

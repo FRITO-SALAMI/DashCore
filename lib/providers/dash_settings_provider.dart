@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/vehicle_model.dart';
 import '../services/supabase_service.dart';
+import '../services/analytics_service.dart';
 import '../services/resource_service.dart';
 
 enum DashboardStyle {
@@ -13,7 +15,7 @@ enum DashboardStyle {
   racing,
   modern,
   vehicle3D,
-  purplePuff,
+  purpleMaps,
   racingHud,
   glowRed,
   hellishRed,
@@ -24,6 +26,10 @@ enum DashboardStyle {
   evCluster,
   teslaRoad,
   teslaModel,
+  sketch,
+  neonWorld,
+  dashcore,
+  myStyle,
 }
 
 enum TemperatureUnit {
@@ -63,13 +69,12 @@ class DashSettingsProvider extends ChangeNotifier {
 
   Set<DashboardStyle> _downloadedStyles = {
     DashboardStyle.sporty,
-    DashboardStyle.teslaRoad,
-    DashboardStyle.teslaModel,
   };
 
   Color _accentColor = const Color(0xFF00E5FF);
   Color _needleColor = Colors.redAccent;
   Color _gaugeColor = Colors.white.withOpacity(0.05);
+  Color _mapColor = const Color(0xFF9C27B0);
 
   bool _isEditMode = false;
   int _lastScreenIndex = 0;
@@ -84,7 +89,7 @@ class DashSettingsProvider extends ChangeNotifier {
 
   bool _isAssetBackground = true;
 
-  String _modelPath = 'assets/Models/OPTIMA2012.glb';
+  String _modelPath = 'assets/models/OPTIMA2012.glb';
 
   bool _isNoObdMode = false;
 
@@ -99,6 +104,8 @@ class DashSettingsProvider extends ChangeNotifier {
 
   int _welcomeDesign = 0;
 
+  bool _showFuelGauge = false;
+
   Color _lightColor = const Color(0xFF00E5FF);
 
   int _lightDesign = 0;
@@ -106,6 +113,8 @@ class DashSettingsProvider extends ChangeNotifier {
   double _simulatedFuelLevel = 100.0;
 
   bool _useSimulatedFuel = false;
+
+  double _tempAlertThreshold = 105.0;
 
   String? _profileImageUrl;
 
@@ -115,6 +124,14 @@ class DashSettingsProvider extends ChangeNotifier {
   Timer? _statsTimer;
 
   Vehicle? _selectedVehicle;
+
+  bool _analyticsConsent = false;
+  String _consentVersion = '1.0';
+  DateTime? _consentTimestamp;
+
+  bool get analyticsConsent => _analyticsConsent;
+  String get consentVersion => _consentVersion;
+  DateTime? get consentTimestamp => _consentTimestamp;
 
   // Estadísticas de conducción
   double _totalDistance = 0.0;
@@ -149,6 +166,7 @@ class DashSettingsProvider extends ChangeNotifier {
   Color get accentColor => _accentColor;
   Color get needleColor => _needleColor;
   Color get gaugeColor => _gaugeColor;
+  Color get mapColor => _mapColor;
 
   bool get isEditMode => _isEditMode;
   int get lastScreenIndex => _lastScreenIndex;
@@ -178,6 +196,8 @@ class DashSettingsProvider extends ChangeNotifier {
 
   int get welcomeDesign => _welcomeDesign;
 
+  bool get showFuelGauge => _showFuelGauge;
+
   Color get lightColor => _lightColor;
 
   int get lightDesign => _lightDesign;
@@ -185,6 +205,8 @@ class DashSettingsProvider extends ChangeNotifier {
   double get simulatedFuelLevel => _simulatedFuelLevel;
 
   bool get useSimulatedFuel => _useSimulatedFuel;
+
+  double get tempAlertThreshold => _tempAlertThreshold;
 
   List<String?> get teslaAppSlots => _teslaAppSlots;
 
@@ -210,9 +232,11 @@ class DashSettingsProvider extends ChangeNotifier {
   void _startStatsTimer() {
     _statsTimer?.cancel();
     _statsTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
-      // Simular que si la app está abierta, el tiempo de conducción aumenta si hay velocidad
-      // Esto se refinará al recibir datos OBD reales en el provider de OBD
+      // Si el vehículo se está moviendo o el dashboard está activo, sumamos tiempo de uso
+      // Para simplificar, si la app está en primer plano y no estamos en modo ahorro extremo
+      _totalDriveTime += const Duration(minutes: 1);
       _saveLocalSettings();
+      notifyListeners();
     });
   }
 
@@ -323,12 +347,24 @@ class DashSettingsProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
 
       _loadLocalSettings(prefs);
-      
+
+      // Initialize Analytics consent from local settings
+      AnalyticsService.instance.updateConsent(
+        granted: _analyticsConsent,
+        version: _consentVersion,
+      );
+
       // Initial check for selected vehicle resources
       await _refreshSelectedVehicleState();
 
       await _loadSupabaseSettings();
       
+      // Update Analytics consent again after Supabase load if it changed
+      AnalyticsService.instance.updateConsent(
+        granted: _analyticsConsent,
+        version: _consentVersion,
+      );
+
       // Final check after Supabase load
       await _refreshSelectedVehicleState();
 
@@ -420,6 +456,7 @@ class DashSettingsProvider extends ChangeNotifier {
 
     _needleColor = Color(prefs.getInt('needle_color') ?? Colors.redAccent.value);
     _gaugeColor = Color(prefs.getInt('gauge_color') ?? Colors.white.withOpacity(0.05).value);
+    _mapColor = Color(prefs.getInt('map_color') ?? 0xFF9C27B0);
     _lastScreenIndex = prefs.getInt('last_screen_index') ?? 0;
 
     _backgroundImage =
@@ -451,6 +488,8 @@ class DashSettingsProvider extends ChangeNotifier {
 
     _welcomeDesign = prefs.getInt('welcome_design') ?? 0;
 
+    _showFuelGauge = prefs.getBool('show_fuel_gauge') ?? false;
+
     _lightColor = Color(
       prefs.getInt('light_color') ?? 0xFF00E5FF,
     );
@@ -461,6 +500,9 @@ class DashSettingsProvider extends ChangeNotifier {
     _simulatedFuelLevel =
         prefs.getDouble('simulated_fuel_level') ?? 100.0;
 
+    _tempAlertThreshold =
+        prefs.getDouble('temp_alert_threshold') ?? 105.0;
+
     _totalDistance = prefs.getDouble('stat_total_dist') ?? 0.0;
     _totalTrips = prefs.getInt('stat_total_trips') ?? 0;
     _maxSpeed = prefs.getDouble('stat_max_speed') ?? 0.0;
@@ -469,6 +511,11 @@ class DashSettingsProvider extends ChangeNotifier {
 
     _useSimulatedFuel =
         prefs.getBool('use_simulated_fuel') ?? false;
+
+    _analyticsConsent = prefs.getBool('analytics_consent') ?? false;
+    _consentVersion = prefs.getString('consent_version') ?? '1.0';
+    final ts = prefs.getString('consent_timestamp');
+    if (ts != null) _consentTimestamp = DateTime.tryParse(ts);
 
     final savedTeslaSlots =
     prefs.getStringList('tesla_app_slots');
@@ -507,14 +554,18 @@ class DashSettingsProvider extends ChangeNotifier {
       }
     }
 
-    final vehicleId =
-    prefs.getString('selected_vehicle_id');
+    final vehicleId = prefs.getString('selected_vehicle_id');
 
     if (vehicleId != null) {
-      _selectedVehicle = defaultVehicles.firstWhere(
-            (vehicle) => vehicle.id == vehicleId,
-        orElse: () => defaultVehicles.first,
+      // Intentar encontrar en los vehículos disponibles (incluye Supabase cargados previamente)
+      final found = _availableVehicles.firstWhere(
+        (v) => v.id == vehicleId,
+        orElse: () => defaultVehicles.firstWhere(
+          (v) => v.id == vehicleId,
+          orElse: () => defaultVehicles.first,
+        ),
       );
+      _selectedVehicle = found;
     }
   }
 
@@ -670,6 +721,10 @@ class DashSettingsProvider extends ChangeNotifier {
     );
   }
 
+  Future<void> saveAllSettings() async {
+    await _saveSettings();
+  }
+
   Future<void> _saveSettings() async {
     await _saveLocalSettings();
     await _syncSupabase();
@@ -682,6 +737,7 @@ class DashSettingsProvider extends ChangeNotifier {
     await prefs.setInt('last_screen_index', _lastScreenIndex);
     await prefs.setInt('needle_color', _needleColor.value);
     await prefs.setInt('gauge_color', _gaugeColor.value);
+    await prefs.setInt('map_color', _mapColor.value);
 
     await prefs.setInt(
       'selected_style_idx',
@@ -764,6 +820,11 @@ class DashSettingsProvider extends ChangeNotifier {
       _welcomeDesign,
     );
 
+    await prefs.setBool(
+      'show_fuel_gauge',
+      _showFuelGauge,
+    );
+
     await prefs.setInt(
       'light_color',
       _lightColor.value,
@@ -779,6 +840,11 @@ class DashSettingsProvider extends ChangeNotifier {
       _simulatedFuelLevel,
     );
 
+    await prefs.setDouble(
+      'temp_alert_threshold',
+      _tempAlertThreshold,
+    );
+
     await prefs.setDouble('stat_total_dist', _totalDistance);
     await prefs.setInt('stat_total_trips', _totalTrips);
     await prefs.setDouble('stat_max_speed', _maxSpeed);
@@ -789,6 +855,12 @@ class DashSettingsProvider extends ChangeNotifier {
       'use_simulated_fuel',
       _useSimulatedFuel,
     );
+
+    await prefs.setBool('analytics_consent', _analyticsConsent);
+    await prefs.setString('consent_version', _consentVersion);
+    if (_consentTimestamp != null) {
+      await prefs.setString('consent_timestamp', _consentTimestamp!.toIso8601String());
+    }
 
     await prefs.setStringList(
       'tesla_app_slots',
@@ -842,6 +914,9 @@ class DashSettingsProvider extends ChangeNotifier {
         'model_path': _modelPath,
         'avatar_url': _profileImageUrl,
         'tesla_app_slots': _teslaAppSlots,
+        'analytics_consent': _analyticsConsent,
+        'consent_version': _consentVersion,
+        'consent_timestamp': _consentTimestamp?.toIso8601String(),
       });
 
       await SupabaseService.instance.saveUserStyles(
@@ -868,6 +943,12 @@ class DashSettingsProvider extends ChangeNotifier {
 
   void setGaugeColor(Color color) {
     _gaugeColor = color;
+    notifyListeners();
+    _saveLocalSettings();
+  }
+
+  void setMapColor(Color color) {
+    _mapColor = color;
     notifyListeners();
     _saveLocalSettings();
   }
@@ -914,6 +995,12 @@ class DashSettingsProvider extends ChangeNotifier {
     _saveSettings();
   }
 
+  void toggleShowFuelGauge(bool value) {
+    _showFuelGauge = value;
+    notifyListeners();
+    _saveSettings();
+  }
+
   void setLightColor(Color color) {
     _lightColor = color;
     notifyListeners();
@@ -934,6 +1021,12 @@ class DashSettingsProvider extends ChangeNotifier {
 
     notifyListeners();
     _saveSettings();
+  }
+
+  void setTempAlertThreshold(double value) {
+    _tempAlertThreshold = value;
+    notifyListeners();
+    _saveLocalSettings();
   }
 
   void toggleUseSimulatedFuel(bool value) {
@@ -964,6 +1057,9 @@ class DashSettingsProvider extends ChangeNotifier {
 
   void selectVehicle(Vehicle vehicle) async {
     _selectedVehicle = vehicle;
+    
+    // Track vehicle selection
+    AnalyticsService.instance.updateVehicleInfo(vehicle);
     
     // Si es un asset (comienza con assets/), no necesita descarga.
     if (vehicle.modelPath.startsWith('assets/')) {
@@ -1080,11 +1176,29 @@ class DashSettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void createNewSketch() {
+    _customGauges.clear();
+    _selectedStyle = DashboardStyle.sketch;
+    _backgroundImage = null;
+    _isAssetBackground = true;
+    _isEditMode = true;
+    notifyListeners();
+    _saveLocalSettings();
+  }
+
+  void clearCustomGauges() {
+    _customGauges.clear();
+    notifyListeners();
+    _saveLocalSettings();
+  }
+
   void addCustomGauge(String type) {
     Size defaultSize = const Size(120, 80);
 
     if (type == 'music_hub') {
       defaultSize = const Size(220, 70);
+    } else if (type == 'fuel') {
+      defaultSize = const Size(130, 90);
     }
 
     _customGauges.add(
@@ -1176,7 +1290,26 @@ class DashSettingsProvider extends ChangeNotifier {
 
   void downloadStyle(DashboardStyle style) {
     _downloadedStyles.add(style);
+    notifyListeners();
+    _saveSettings();
+  }
 
+  void saveAsMyStyle() {
+    if (_selectedStyle == DashboardStyle.sketch) {
+      _selectedStyle = DashboardStyle.myStyle;
+      _downloadedStyles.add(DashboardStyle.myStyle);
+      notifyListeners();
+      _saveSettings();
+    }
+  }
+
+  void removeDownloadedStyle(DashboardStyle style) {
+    if (style == DashboardStyle.sporty) return; // Always keep default
+    
+    _downloadedStyles.remove(style);
+    if (_selectedStyle == style) {
+      _selectedStyle = DashboardStyle.sporty;
+    }
     notifyListeners();
     _saveSettings();
   }
@@ -1187,6 +1320,42 @@ class DashSettingsProvider extends ChangeNotifier {
     }
 
     _selectedStyle = style;
+
+    AnalyticsService.instance.logEvent('dashboard_style_selected', data: {
+      'style_id': style.name,
+    });
+
+    // Sincronizar fondos según el estilo
+    switch (style) {
+      case DashboardStyle.racing:
+      case DashboardStyle.racingHud:
+      case DashboardStyle.raceCluster:
+      case DashboardStyle.glowRed:
+        setBackgroundImage('assets/images/png/carbon_fiber.jpg');
+        break;
+      case DashboardStyle.hellishRed:
+        setBackgroundImage('assets/images/png/FondoHellisg.jpg');
+        break;
+      case DashboardStyle.modern:
+      case DashboardStyle.evCluster:
+      case DashboardStyle.teslaStyle:
+      case DashboardStyle.teslaRoad:
+      case DashboardStyle.teslaModel:
+      case DashboardStyle.sketch:
+      case DashboardStyle.dashcore:
+        setBackgroundImage('assets/images/png/carbon_fiber.jpg');
+        break;
+      case DashboardStyle.myStyle:
+        setBackgroundImage('COLOR_BLACK');
+        break;
+      case DashboardStyle.purpleMaps:
+      case DashboardStyle.neonWorld:
+        setBackgroundImage('assets/images/png/car2.png');
+        break;
+      default:
+        // Mantener el actual o usar uno por defecto
+        break;
+    }
 
     notifyListeners();
     _saveSettings();
@@ -1201,6 +1370,26 @@ class DashSettingsProvider extends ChangeNotifier {
 
   void setAccentColor(Color color) {
     _accentColor = color;
+
+    notifyListeners();
+    _saveSettings();
+  }
+
+  void setAnalyticsConsent(bool granted) {
+    _analyticsConsent = granted;
+    _consentTimestamp = DateTime.now();
+
+    AnalyticsService.instance.updateConsent(
+      granted: granted,
+      version: _consentVersion,
+    );
+
+    if (granted) {
+      AnalyticsService.instance.logEvent('consent_updated', data: {
+        'granted': true,
+        'version': _consentVersion,
+      });
+    }
 
     notifyListeners();
     _saveSettings();
@@ -1245,5 +1434,28 @@ class DashSettingsProvider extends ChangeNotifier {
     }
 
     return (celsius * 9 / 5) + 32;
+  }
+
+  Future<bool> verifyAppIntegrity() async {
+    final criticalAssets = [
+      'assets/models/OPTIMA2012.glb',
+      'assets/models/Kia_Optima_15.glb',
+      'assets/models/Honda_Civic_16.glb',
+      'assets/images/preview_store/neonword.png',
+      'assets/images/preview_store/defualtpreview.jpeg',
+      'assets/images/png/carbon_fiber.jpg',
+      'assets/world_map.svg',
+    ];
+
+    try {
+      for (final asset in criticalAssets) {
+        final data = await rootBundle.load(asset);
+        if (data.lengthInBytes == 0) throw Exception('Empty asset');
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Integrity check failed: $e');
+      return false;
+    }
   }
 }

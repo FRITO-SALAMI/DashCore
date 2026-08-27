@@ -4,6 +4,8 @@ import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'package:provider/provider.dart';
 import '../../../models/obd_data.dart';
 import '../../../providers/music_provider.dart';
+import '../../../providers/dash_settings_provider.dart';
+import 'package:dashcore/widget/dashboard_background.dart';
 
 class ModernTeslaRoadTheme extends StatefulWidget {
   final ObdData data;
@@ -44,10 +46,19 @@ class _ModernTeslaRoadThemeState extends State<ModernTeslaRoadTheme>
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<DashSettingsProvider>();
+    final isGifBackground = settings.backgroundImage?.endsWith('.gif') ?? false;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
+          if (settings.backgroundImage != null)
+            DashboardBackground(
+              backgroundImage: settings.backgroundImage,
+              isAssetBackground: settings.isAssetBackground,
+              opacity: isGifBackground ? 0.3 : 0.1,
+            ),
           // Road and Perspective
           Positioned.fill(
             child: AnimatedBuilder(
@@ -65,10 +76,10 @@ class _ModernTeslaRoadThemeState extends State<ModernTeslaRoadTheme>
 
           // 3D Model in center of road
           Positioned(
-            bottom: 80,
+            bottom: 60,
             left: 0,
             right: 0,
-            height: 250,
+            height: 180,
             child: IgnorePointer(
               child: ModelViewer(
                 key: ValueKey(widget.modelPath),
@@ -78,8 +89,10 @@ class _ModernTeslaRoadThemeState extends State<ModernTeslaRoadTheme>
                 cameraControls: false,
                 disableZoom: true,
                 disablePan: true,
-                cameraOrbit: '180deg 80deg 2.5m',
-                exposure: 1.0,
+                cameraOrbit: '180deg 65deg 5m',
+                exposure: 1.2,
+                loading: Loading.lazy,
+                shadowIntensity: 0.1,
               ),
             ),
           ),
@@ -177,6 +190,8 @@ class ModernTeslaModelTheme extends StatelessWidget {
   final String modelPath;
   final String nowPlayingTitle;
   final Color accentColor;
+  final String? backgroundImage;
+  final bool isAssetBackground;
 
   const ModernTeslaModelTheme({
     super.key,
@@ -184,19 +199,31 @@ class ModernTeslaModelTheme extends StatelessWidget {
     required this.modelPath,
     required this.nowPlayingTitle,
     this.accentColor = const Color(0xFF00E5FF),
+    this.backgroundImage,
+    this.isAssetBackground = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = backgroundImage == 'COLOR_BLACK' || backgroundImage == null || !isAssetBackground;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color subTextColor = isDark ? Colors.white54 : Colors.black54;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F3F5), // Light background as in image 2
+      backgroundColor: isDark ? Colors.black : const Color(0xFFF1F3F5), 
       body: Stack(
         children: [
+          if (backgroundImage != null && backgroundImage != 'COLOR_BLACK')
+            DashboardBackground(
+              backgroundImage: backgroundImage,
+              isAssetBackground: isAssetBackground,
+              opacity: 0.3,
+            ),
           // Large 3D Model
           Center(
             child: SizedBox(
-              width: MediaQuery.of(context).size.width * 0.8,
-              height: MediaQuery.of(context).size.height * 0.7,
+              width: MediaQuery.of(context).size.width * 0.7, // Slightly smaller
+              height: MediaQuery.of(context).size.height * 0.6,
               child: ModelViewer(
                 key: ValueKey(modelPath),
                 src: modelPath,
@@ -207,7 +234,8 @@ class ModernTeslaModelTheme extends StatelessWidget {
                 disablePan: true,
                 cameraOrbit: '45deg 75deg 3.5m',
                 exposure: 1.0,
-                shadowIntensity: 1.0,
+                shadowIntensity: 0.1,
+                loading: Loading.lazy,
               ),
             ),
           ),
@@ -215,22 +243,22 @@ class ModernTeslaModelTheme extends StatelessWidget {
           // Speed on the Left
           Positioned(
             left: 80,
-            top: MediaQuery.of(context).size.height * 0.15, // Higher up
+            top: MediaQuery.of(context).size.height * 0.15, 
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   data.speed.round().toString(),
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 160, // Increased
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 160,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const Text(
+                Text(
                   'KM/H',
                   style: TextStyle(
-                    color: Colors.black54,
+                    color: subTextColor,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 4,
@@ -250,15 +278,15 @@ class ModernTeslaModelTheme extends StatelessWidget {
                 _TeslaStat(
                   label: 'TEMP',
                   value: '${data.engineTemp}°C',
-                  accentColor: Colors.black,
-                  isLight: true,
+                  accentColor: accentColor,
+                  isLight: !isDark,
                 ),
                 const SizedBox(height: 15),
                 _TeslaStat(
                   label: 'VOLT',
                   value: '${data.voltage.toStringAsFixed(1)}V',
-                  accentColor: Colors.black,
-                  isLight: true,
+                  accentColor: accentColor,
+                  isLight: !isDark,
                 ),
               ],
             ),
@@ -269,8 +297,8 @@ class ModernTeslaModelTheme extends StatelessWidget {
             bottom: 40,
             left: 40,
             child: _ModernMusicHub(
-              accentColor: Colors.black,
-              isLight: true,
+              accentColor: accentColor,
+              isLight: !isDark,
               maxWidth: 220,
             ),
           ),
@@ -381,6 +409,14 @@ class _ModernMusicHub extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             IconButton(
+              onPressed: music.previous,
+              iconSize: 18,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: Icon(Icons.skip_previous_rounded, color: isLight ? Colors.black : Colors.white),
+            ),
+            const SizedBox(width: 5),
+            IconButton(
               onPressed: music.playPause,
               iconSize: 22,
               padding: EdgeInsets.zero,
@@ -418,41 +454,83 @@ class _TeslaRoadPainter extends CustomPainter {
 
     final vanishPoint = Offset(w / 2, h * 0.4);
 
+    // Draw Horizon/Sky Gradient
+    final skyPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Colors.blue.withOpacity(0.05), Colors.transparent],
+      ).createShader(Rect.fromLTWH(0, 0, w, vanishPoint.dy));
+    canvas.drawRect(Rect.fromLTWH(0, 0, w, vanishPoint.dy), skyPaint);
+
     final roadPaint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
+      ..color = Colors.white.withOpacity(0.08)
       ..style = PaintingStyle.fill;
 
     final path = Path()
-      ..moveTo(w * 0.35, h)
-      ..lineTo(vanishPoint.dx - 20, vanishPoint.dy)
-      ..lineTo(vanishPoint.dx + 20, vanishPoint.dy)
-      ..lineTo(w * 0.65, h)
+      ..moveTo(w * -0.2, h)
+      ..lineTo(vanishPoint.dx - 40, vanishPoint.dy)
+      ..lineTo(vanishPoint.dx + 40, vanishPoint.dy)
+      ..lineTo(w * 1.2, h)
       ..close();
 
     canvas.drawPath(path, roadPaint);
 
     final linePaint = Paint()
       ..color = Colors.white.withOpacity(0.3)
-      ..strokeWidth = 2
+      ..strokeWidth = 3
       ..style = PaintingStyle.stroke;
 
-    // Draw lanes
-    for (var dx in [w * 0.35, w * 0.65]) {
-       canvas.drawLine(Offset(dx, h), vanishPoint, linePaint);
-    }
+    // Draw solid edges
+    canvas.drawLine(Offset(w * -0.2, h), vanishPoint, linePaint);
+    canvas.drawLine(Offset(w * 1.2, h), vanishPoint, linePaint);
 
-    // Dashed lines
+    // Dashed lines with proper perspective
     final dashPaint = Paint()
       ..color = Colors.white.withOpacity(0.5)
-      ..strokeWidth = 3;
+      ..strokeWidth = 2;
 
-    double moveOffset = (animationValue * 100) % 60;
+    double moveOffset = (animationValue * 100) % 50;
     
-    final startLeft = Offset(w * 0.45, h);
-    final startRight = Offset(w * 0.55, h);
+    // 4 dividers
+    for (double factor in [0.1, 0.35, 0.65, 0.9]) {
+       final startX = w * factor;
+       final start = Offset(startX, h);
+       _drawDashedLine(canvas, start, vanishPoint, moveOffset, dashPaint);
+    }
 
-    _drawDashedLine(canvas, startLeft, vanishPoint, moveOffset, dashPaint);
-    _drawDashedLine(canvas, startRight, vanishPoint, moveOffset, dashPaint);
+    // Draw Trees Silhouettes
+    _drawTrees(canvas, size, vanishPoint);
+  }
+
+  void _drawTrees(Canvas canvas, Size size, Offset vanish) {
+    final w = size.width;
+    final h = size.height;
+    
+    final treePaint = Paint()..color = Colors.white.withOpacity(0.15);
+    
+    for (int i = 0; i < 6; i++) {
+      double t = (animationValue + (i / 6)) % 1.0;
+      double perspectiveScale = math.pow(t, 3).toDouble();
+      
+      for (double side in [-1, 1]) {
+        double x = vanish.dx + (side * w * 0.8 * perspectiveScale);
+        double y = vanish.dy + (h - vanish.dy) * perspectiveScale;
+        
+        double treeHeight = 150 * perspectiveScale;
+        double treeWidth = 60 * perspectiveScale;
+        
+        if (perspectiveScale > 0.05) {
+          final treePath = Path()
+            ..moveTo(x, y)
+            ..lineTo(x - treeWidth / 2, y)
+            ..lineTo(x, y - treeHeight)
+            ..lineTo(x + treeWidth / 2, y)
+            ..close();
+          canvas.drawPath(treePath, treePaint);
+        }
+      }
+    }
   }
 
   void _drawDashedLine(Canvas canvas, Offset start, Offset end, double offset, Paint paint) {
@@ -463,9 +541,15 @@ class _TeslaRoadPainter extends CustomPainter {
     double d = offset;
     while (d < distance) {
       final p1 = start + unitVector * d;
-      final p2 = start + unitVector * (math.min(d + 20, distance));
+      // Perspective shortening: further dashes are shorter
+      double ratio = 1 - (d / distance);
+      double dashLen = 30 * math.max(0.2, ratio);
+      
+      final p2 = start + unitVector * (math.min(d + dashLen, distance));
+      
+      paint.color = Colors.white.withOpacity(0.6 * math.max(0.1, ratio));
       canvas.drawLine(p1, p2, paint);
-      d += 40;
+      d += dashLen * 2;
     }
   }
 

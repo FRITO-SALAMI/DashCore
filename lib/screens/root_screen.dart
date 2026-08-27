@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,8 +17,12 @@ import 'package:dashcore/widget/home_screen/hidden_menu_overlay.dart'
 as hidden_menu;
 import 'package:dashcore/widget/welcome_greeting.dart';
 import 'package:dashcore/providers/dash_settings_provider.dart';
+import 'package:dashcore/providers/obd_provider.dart';
 import 'package:dashcore/services/supabase_service.dart';
+import 'package:dashcore/services/analytics_service.dart';
 import 'package:provider/provider.dart';
+
+import 'package:dashcore/widget/tutorial_overlay.dart';
 
 class RootScreen extends StatefulWidget {
   const RootScreen({super.key});
@@ -33,25 +38,49 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
   bool _isLoading = true;
   bool _showOnboarding = false;
   bool _isGreetingActive = false;
+  bool _isUpdateDialogOpen = false;
+  bool _updateCheckSucceeded = false;
   String _welcomeUsername = 'INVITADO';
+  Timer? _connectivityRetryTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkStatus();
+    _startConnectivityPolling();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _connectivityRetryTimer?.cancel();
     super.dispose();
+  }
+
+  void _startConnectivityPolling() {
+    _connectivityRetryTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+      if (!_updateCheckSucceeded && !_isUpdateDialogOpen) {
+        _checkForUpdates();
+      }
+    });
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final settings = context.read<DashSettingsProvider>();
+    final obd = context.read<ObdProvider>();
+
     if (state == AppLifecycleState.resumed) {
       _triggerGreeting();
+      obd.handleAppResume();
+      _checkForUpdates();
+      _checkRemoteAnnouncements();
+      AnalyticsService.instance.updateSessionActivity();
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      // Guardado preventivo antes de que la radio entre en Sleep profundo
+      settings.saveAllSettings();
+      obd.saveConnectionState();
     }
   }
 
@@ -70,24 +99,43 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
     });
   }
 
+  bool _showTutorial = false;
+
   Future<void> _checkStatus() async {
     final prefs = await SharedPreferences.getInstance();
     final done = prefs.getBool('onboarding_done') ?? false;
+    final tutorialDone = prefs.getBool('tutorial_done') ?? false;
+
+    // Registrar apertura de app
+    if (prefs.getBool('app_first_open_logged') != true) {
+      AnalyticsService.instance.logEvent('app_first_open');
+      await prefs.setBool('app_first_open_logged', true);
+    }
+    AnalyticsService.instance.logEvent('app_open');
 
     // Iniciar verificación de actualización en paralelo
     _checkForUpdates();
+    _checkRemoteAnnouncements();
+
+    final settings = context.read<DashSettingsProvider>();
+    final obd = context.read<ObdProvider>();
+    
+    // Vincular estadísticas de conducción
+    obd.onStatsUpdate = (speed, distance) {
+      settings.updateStats(speed, distance);
+    };
 
     await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
 
-    final settings = context.read<DashSettingsProvider>();
     final user = SupabaseService.instance.currentUser;
 
     setState(() {
       _showOnboarding = !done;
+      _showTutorial = false; // Se activará tras el saludo de bienvenida
       _isLoading = false;
-      _currentIndex = settings.lastScreenIndex; // Restore last screen
+      _currentIndex = settings.lastScreenIndex; 
 
       if (done && settings.showWelcomeGreeting) {
         _welcomeUsername = user != null
@@ -98,31 +146,111 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
     });
   }
 
+  Future<void> _finishTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('tutorial_done', true);
+    setState(() => _showTutorial = false);
+  }
+
   Future<void> _checkForUpdates() async {
+    if (_isUpdateDialogOpen) return;
+
     try {
       final release = await SupabaseService.instance.getActiveVersion();
+      _updateCheckSucceeded = true;
       if (release.isEmpty) return;
 
       final int latestVersionCode = release['version_code'] ?? 0;
+      final int minVersionCode = release['minimum_version_code'] ?? 0;
+      final bool isMandatory = release['is_mandatory'] ?? false;
       const int currentVersionCode = SupabaseService.appBuild;
-      const String currentVersion = '1.0.2'; // Added currentVersion string
+      const String currentVersion = '1.0.2';
 
-      if (latestVersionCode > currentVersionCode) {
+      final bool needsUpdate = latestVersionCode > currentVersionCode;
+      final bool mustUpdate = isMandatory || (minVersionCode > currentVersionCode);
+
+      if (needsUpdate) {
         if (!mounted) return;
 
-        showDialog(
+        AnalyticsService.instance.logEvent('app_update_available', data: {
+          'latest_version': release['version_name'],
+          'is_mandatory': mustUpdate,
+        });
+
+        setState(() => _isUpdateDialogOpen = true);
+
+        await showDialog(
           context: context,
-          barrierDismissible: false,
-          builder: (context) => UpdateDialog(
-            currentVersion: currentVersion,
-            newVersion: release['version_name'] ?? 'Nueva',
-            downloadUrl: release['download_url'] ?? '',
-            releaseNotes: release['release_notes'] ?? 'Mejoras de rendimiento y corrección de errores.',
+          barrierDismissible: !mustUpdate,
+          builder: (context) => WillPopScope(
+            onWillPop: () async => !mustUpdate,
+            child: UpdateDialog(
+              currentVersion: currentVersion,
+              newVersion: release['version_name'] ?? 'Nueva',
+              downloadUrl: release['download_url'] ?? '',
+              releaseNotes: release['release_notes'] ?? 'Mejoras de rendimiento y corrección de errores.',
+              isMandatory: mustUpdate,
+            ),
           ),
         );
+
+        if (mounted) setState(() => _isUpdateDialogOpen = false);
       }
     } catch (e) {
       debugPrint('Error checking updates: $e');
+    }
+  }
+
+  Future<void> _checkRemoteAnnouncements() async {
+    try {
+      final announcement = await SupabaseService.instance.getActiveAnnouncement();
+      if (announcement == null) return;
+
+      final String id = announcement['id']?.toString() ?? '';
+      if (id.isEmpty) return;
+
+      final prefs = await SharedPreferences.getInstance();
+      final lastId = prefs.getString('last_announcement_id');
+
+      if (id == lastId) return;
+
+      if (!mounted) return;
+
+      AnalyticsService.instance.logEvent('remote_announcement_shown', data: {
+        'announcement_id': id,
+        'title': announcement['title'],
+      });
+
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF0D1117),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            announcement['title'] ?? 'AVISO',
+            style: const TextStyle(color: Color(0xFF00E5FF), fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            announcement['message'] ?? '',
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                AnalyticsService.instance.logEvent('remote_announcement_closed', data: {
+                  'announcement_id': id,
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('ENTENDIDO', style: TextStyle(color: Color(0xFF00E5FF))),
+            ),
+          ],
+        ),
+      );
+
+      await prefs.setString('last_announcement_id', id);
+    } catch (e) {
+      debugPrint('Error comprobando avisos: $e');
     }
   }
 
@@ -256,15 +384,34 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: Colors.black,
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _SpeedometerLoading(),
-              SizedBox(height: 30),
-              Text(
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0.8, end: 1.0),
+                duration: const Duration(milliseconds: 1500),
+                curve: Curves.easeInOutSine,
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: value,
+                    child: Opacity(
+                      opacity: value,
+                      child: child,
+                    ),
+                  );
+                },
+                child: Image.asset(
+                  'assets/icon/Logoapp.png',
+                  width: 180,
+                  height: 180,
+                ),
+                onEnd: () {},
+              ),
+              const SizedBox(height: 40),
+              const Text(
                 'DASHCORE',
                 style: TextStyle(
                   color: Colors.white,
@@ -273,8 +420,8 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                   letterSpacing: 14,
                 ),
               ),
-              SizedBox(height: 10),
-              Text(
+              const SizedBox(height: 10),
+              const Text(
                 'INITIALIZING SYSTEMS',
                 style: TextStyle(
                   color: Colors.white24,
@@ -342,14 +489,26 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                 username: _welcomeUsername,
                 durationSeconds: context.read<DashSettingsProvider>().welcomeGreetingDuration,
                 design: context.read<DashSettingsProvider>().welcomeDesign,
-                onFinished: () {
+                onFinished: () async {
                   if (mounted) {
                     setState(() {
                       _isGreetingActive = false;
                     });
+
+                    // Iniciar tutorial solo tras el saludo de bienvenida si no se ha hecho
+                    final prefs = await SharedPreferences.getInstance();
+                    final tutorialDone = prefs.getBool('tutorial_done') ?? false;
+                    if (!tutorialDone) {
+                      setState(() => _showTutorial = true);
+                    }
                   }
                 },
               ),
+            ),
+
+          if (_showTutorial)
+            Positioned.fill(
+              child: TutorialOverlay(onFinish: _finishTutorial),
             ),
         ],
       ),
@@ -358,145 +517,5 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
 }
 
 // ================================================================
-// LOADING
+// LOADING LOGO ANIMATION (Legacy classes removed)
 // ================================================================
-
-class _SpeedometerLoading extends StatefulWidget {
-  const _SpeedometerLoading();
-
-  @override
-  State<_SpeedometerLoading> createState() =>
-      _SpeedometerLoadingState();
-}
-
-class _SpeedometerLoadingState extends State<_SpeedometerLoading>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _controller = AnimationController(
-      duration: const Duration(seconds: 1),
-      vsync: this,
-    )..repeat(reverse: true);
-
-    _animation = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeInOut,
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return SizedBox(
-          width: 120,
-          height: 120,
-          child: CustomPaint(
-            painter: _LoadingSpeedometerPainter(
-              progress: _animation.value,
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// ================================================================
-// LOADING SPEEDOMETER PAINTER
-// ================================================================
-
-class _LoadingSpeedometerPainter extends CustomPainter {
-  final double progress;
-
-  const _LoadingSpeedometerPainter({
-    required this.progress,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(
-      size.width / 2,
-      size.height / 2,
-    );
-
-    final radius = size.width / 2;
-
-    const startAngle = 0.8 * math.pi;
-    const sweepAngle = 1.4 * math.pi;
-
-    final bgPaint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4;
-
-    canvas.drawArc(
-      Rect.fromCircle(
-        center: center,
-        radius: radius,
-      ),
-      startAngle,
-      sweepAngle,
-      false,
-      bgPaint,
-    );
-
-    final activePaint = Paint()
-      ..color = const Color(0xFF00E5FF)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawArc(
-      Rect.fromCircle(
-        center: center,
-        radius: radius,
-      ),
-      startAngle,
-      sweepAngle * progress,
-      false,
-      activePaint,
-    );
-
-    final needleAngle =
-        startAngle + (sweepAngle * progress);
-
-    final needlePaint = Paint()
-      ..color = const Color(0xFF00E5FF)
-      ..strokeWidth = 2;
-
-    canvas.drawLine(
-      center,
-      center +
-          Offset(
-            radius * 0.8 * math.cos(needleAngle),
-            radius * 0.8 * math.sin(needleAngle),
-          ),
-      needlePaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(
-      covariant _LoadingSpeedometerPainter oldDelegate,
-      ) {
-    return oldDelegate.progress != progress;
-  }
-}

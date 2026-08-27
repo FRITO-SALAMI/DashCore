@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'package:provider/provider.dart';
 import '../../providers/dash_settings_provider.dart';
+import '../../widgets/rpm_warning_animation.dart';
+import '../dashboard_background.dart';
 
 class RetroLcdThemeData {
   final double speed;
@@ -37,32 +39,38 @@ class RetroLcdTheme extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<DashSettingsProvider>();
+    final isGifBackground = settings.backgroundImage?.endsWith('.gif') ?? false;
+
     return Container(
       color: _bg,
-      child: Center(
-        child: AspectRatio(
-          aspectRatio: 16 / 9,
-          child: Container(
-            margin: const EdgeInsets.all(12),
+      child: Stack(
+        children: [
+          if (settings.backgroundImage != null)
+            DashboardBackground(
+              backgroundImage: settings.backgroundImage,
+              isAssetBackground: settings.isAssetBackground,
+              opacity: isGifBackground ? 0.3 : 0.05,
+            ),
+          Center(
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Container(
+                margin: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: _panelBg,
-              border: Border.all(color: Colors.white10, width: 1),
-              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white10, width: 1.5),
+              borderRadius: BorderRadius.circular(12),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20, spreadRadius: 5),
+                BoxShadow(color: accentColor.withOpacity(0.05), blurRadius: 40, spreadRadius: 2),
               ],
             ),
             child: Stack(
               children: [
-                // Brushed Metal Texture Overlay (Simulated)
+                // Scanlines / LCD Grid
                 Positioned.fill(
-                  child: Opacity(
-                    opacity: 0.03,
-                    child: Image.network(
-                      'https://www.transparenttextures.com/patterns/brushed-alum.png',
-                      repeat: ImageRepeat.repeat,
-                      errorBuilder: (_, __, ___) => const SizedBox(),
-                    ),
+                  child: CustomPaint(
+                    painter: _RetroLcdGridPainter(color: accentColor.withOpacity(0.03)),
                   ),
                 ),
                 
@@ -108,7 +116,10 @@ class RetroLcdTheme extends StatelessWidget {
                           ),
                           
                           // RIGHT PANEL: RPM & MISC
-                          _RetroRightPanel(data: data, color: accentColor),
+                          RpmWarningAnimation(
+                            rpm: data.rpm,
+                            child: _RetroRightPanel(data: data, color: accentColor),
+                          ),
                         ],
                       ),
                     ),
@@ -136,7 +147,9 @@ class RetroLcdTheme extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ],
+  ),
+);
   }
 }
 
@@ -201,18 +214,18 @@ class _RetroCircularIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 1)),
+        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
         const SizedBox(height: 10),
         Stack(
           alignment: Alignment.center,
           children: [
             SizedBox(
-              width: 70, height: 70,
+              width: 90, height: 90, // Increased size
               child: CustomPaint(
                 painter: _CircularRetroPainter(progress: value, color: color),
               ),
             ),
-            Text('${(value * 100).round()}', style: const TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w900, fontFamily: 'monospace')),
+            Text('${(value * 100).round()}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, fontFamily: 'monospace')),
           ],
         ),
       ],
@@ -255,6 +268,8 @@ class _RetroCenterConsole extends StatelessWidget {
                     disablePan: true,
                     cameraOrbit: '180deg 80deg 4.5m',
                     exposure: 1.2,
+                    loading: Loading.lazy,
+                    shadowIntensity: 0.1,
                   );
                 },
               ),
@@ -419,4 +434,21 @@ class _RetroPerspectiveGrid extends CustomPainter {
   }
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _RetroLcdGridPainter extends CustomPainter {
+  final Color color;
+  _RetroLcdGridPainter({required this.color});
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color..strokeWidth = 0.5;
+    for (double i = 0; i < size.height; i += 4) {
+      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
+    }
+    for (double i = 0; i < size.width; i += 4) {
+      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
+    }
+  }
+  @override
+  bool shouldRepaint(covariant _RetroLcdGridPainter oldDelegate) => false;
 }

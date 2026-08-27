@@ -18,17 +18,19 @@ class MusicProvider extends ChangeNotifier {
   double get progress => _progress;
 
   String get trackTitle {
-    if (_currentTrack == null || _currentTrack!.title == null || _currentTrack!.title!.isEmpty) {
-      return 'Sin reproducción';
+    final title = _currentTrack?.title;
+    if (title == null || title.isEmpty || title == 'null' || title == 'Unknown') {
+      return _isPlaying ? 'REPRODUCIENDO...' : 'DashCore Music';
     }
-    return _currentTrack!.title!;
+    return title;
   }
 
   String get artistName {
-    if (_currentTrack == null || _currentTrack!.artist == null || _currentTrack!.artist!.isEmpty) {
-      return '—';
+    final artist = _currentTrack?.artist;
+    if (artist == null || artist.isEmpty || artist == 'null' || artist == 'Unknown') {
+      return 'DashCore Audio';
     }
-    return _currentTrack!.artist!;
+    return artist;
   }
 
   MusicProvider() {
@@ -46,7 +48,8 @@ class MusicProvider extends ChangeNotifier {
     try {
       final bool enabled = await NowPlaying.instance.isEnabled();
       if (!enabled) {
-        await requestPermissions();
+        // La petición de permisos se hace desde la UI usualmente, pero aseguramos aquí
+        debugPrint('[MUSIC] NowPlaying not enabled, requesting...');
       }
 
       await NowPlaying.instance.start(resolveImages: true);
@@ -56,8 +59,16 @@ class MusicProvider extends ChangeNotifier {
         _updateTrack(track);
       });
       
-      // Force immediate fetch with retries
+      // Bucle de refresco agresivo al inicio
       _fetchCurrentTrack();
+      
+      Timer.periodic(const Duration(seconds: 2), (timer) {
+        if (_currentTrack == null || _currentTrack!.title == null) {
+          _fetchCurrentTrack();
+        } else {
+          timer.cancel();
+        }
+      });
 
     } catch (e) {
       debugPrint('Error iniciando NowPlaying: $e');
@@ -65,17 +76,23 @@ class MusicProvider extends ChangeNotifier {
   }
 
   Future<void> _fetchCurrentTrack() async {
-    for (int i = 0; i < 3; i++) {
+    try {
       final current = NowPlaying.instance.track;
-      if (current != null && current.title != null) {
+      if (current != null) {
         _updateTrack(current);
-        break;
       }
-      await Future.delayed(Duration(milliseconds: 500 * (i + 1)));
+    } catch (e) {
+      debugPrint('Error fetching track: $e');
     }
   }
 
   void _updateTrack(NowPlayingTrack track) {
+    // Si el track viene vacío o nulo, no sobreescribimos con 'Unknown' si ya teníamos algo
+    if (track.title == null || track.title!.isEmpty || track.title == 'null') {
+      if (_currentTrack != null) return;
+    }
+
+    debugPrint('[MUSIC] Track update: ${track.title} by ${track.artist} (${track.state})');
     _currentTrack = track;
     _isPlaying = track.state == NowPlayingState.playing;
 
@@ -114,15 +131,43 @@ class MusicProvider extends ChangeNotifier {
     }
   }
 
-  void playPause() {
-    platform.invokeMethod('mediaControl', {'command': 'playPause'});
+  void playPause() async {
+    try {
+      // Optimistic update for UI responsiveness
+      _isPlaying = !_isPlaying;
+      notifyListeners();
+
+      await platform.invokeMethod('mediaControl', {'command': 'playPause'});
+
+      // Delay and fetch to confirm real state
+      Future.delayed(const Duration(milliseconds: 800), _fetchCurrentTrack);
+    } catch (e) {
+      debugPrint('Error media control: $e');
+    }
   }
 
-  void next() {
-    platform.invokeMethod('mediaControl', {'command': 'next'});
+  void next() async {
+    try {
+      await platform.invokeMethod('mediaControl', {'command': 'next'});
+      // Reset progress optimistically
+      _progress = 0.0;
+      notifyListeners();
+
+      Future.delayed(const Duration(milliseconds: 1000), _fetchCurrentTrack);
+    } catch (e) {
+      debugPrint('Error media next: $e');
+    }
   }
 
-  void previous() {
-    platform.invokeMethod('mediaControl', {'command': 'previous'});
+  void previous() async {
+    try {
+      await platform.invokeMethod('mediaControl', {'command': 'previous'});
+      _progress = 0.0;
+      notifyListeners();
+
+      Future.delayed(const Duration(milliseconds: 1000), _fetchCurrentTrack);
+    } catch (e) {
+      debugPrint('Error media previous: $e');
+    }
   }
 }

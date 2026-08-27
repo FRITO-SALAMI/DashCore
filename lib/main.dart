@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'services/bluetooth_obd_connection.dart';
 import 'services/supabase_service.dart';
+import 'services/analytics_service.dart';
 import 'providers/obd_provider.dart';
 import 'providers/bluetooth_provider.dart';
 import 'providers/dash_settings_provider.dart';
@@ -11,11 +12,21 @@ import 'providers/music_provider.dart';
 import 'core/app_themes.dart';
 import 'screens/root_screen.dart';
 import 'widget/reconnection_banner.dart';
+import 'utils/app_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await SupabaseService.initialize();
+
+  // Handler global de errores para analítica
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    AnalyticsService.instance.logEvent('error', data: {
+      'exception': details.exceptionAsString(),
+      'stack': details.stack.toString().split('\n').take(10).join('\n'),
+    });
+  };
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
@@ -99,10 +110,12 @@ class DashCoreApp extends StatelessWidget {
                 final bool showBanner =
                     isBluetoothReconnecting || isObdRecovering;
 
+                final loc = AppLocalizations.of(context);
+
                 final String message = isBluetoothReconnecting
-                    ? bluetoothProvider.backgroundMessage
+                    ? loc.translate('reconnecting')
                     : isObdRecovering
-                    ? obdProvider.initMessage
+                    ? loc.translate(obdProvider.initMessage)
                     : '';
 
                 return AnimatedPositioned(

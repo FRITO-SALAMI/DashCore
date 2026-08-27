@@ -22,16 +22,31 @@ class DashboardBackground extends StatelessWidget {
     return Positioned.fill(
       child: Opacity(
         opacity: opacity,
-        child: isAssetBackground
-            ? Image.asset(
-                backgroundImage!,
-                fit: BoxFit.cover,
-              )
-            : Image.file(
-                File(backgroundImage!),
-                fit: BoxFit.cover,
-              ),
+        child: _buildImage(),
       ),
+    );
+  }
+
+  Widget _buildImage() {
+    if (isAssetBackground) {
+      return Image.asset(
+        backgroundImage!,
+        fit: BoxFit.cover,
+      );
+    }
+
+    if (backgroundImage!.startsWith('http')) {
+      return Image.network(
+        backgroundImage!,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+      );
+    }
+
+    return Image.file(
+      File(backgroundImage!),
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
     );
   }
 }

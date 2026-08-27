@@ -91,15 +91,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               'DASHCORE', 
               style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: 12),
             ),
-            SizedBox(height: 10),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(color: accent.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-              child: Text(
-                'PREMIUM EXPERIENCE', 
-                style: TextStyle(color: accent, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 3),
-              ),
-            ),
             SizedBox(height: 80),
             _PremiumButton(
               label: 'COMENZAR EXPERIENCIA', 

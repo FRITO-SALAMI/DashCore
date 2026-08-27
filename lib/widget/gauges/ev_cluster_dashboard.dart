@@ -2,6 +2,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
+import 'package:provider/provider.dart';
+import '../../providers/dash_settings_provider.dart';
+import '../../providers/music_provider.dart';
+import '../../widgets/rpm_warning_animation.dart';
+import '../dashboard_background.dart';
 
 class EvClusterThemeData {
   final double speedKmh;
@@ -63,6 +68,10 @@ class _EvClusterThemeState extends State<EvClusterTheme>
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<DashSettingsProvider>();
+    final isGifBackground = settings.backgroundImage?.endsWith('.gif') ?? false;
+    final showTempWarning = widget.data.coolantTemp >= settings.tempAlertThreshold;
+
     final speedFactor =
         (widget.data.speedKmh / 100).clamp(0.1, 3.0);
 
@@ -77,6 +86,12 @@ class _EvClusterThemeState extends State<EvClusterTheme>
       child: SafeArea(
         child: Stack(
           children: [
+            if (settings.backgroundImage != null)
+              DashboardBackground(
+                backgroundImage: settings.backgroundImage,
+                isAssetBackground: settings.isAssetBackground,
+                opacity: isGifBackground ? 0.35 : 0.1,
+              ),
             Positioned(
               bottom: 20,
               left: 30,
@@ -85,6 +100,15 @@ class _EvClusterThemeState extends State<EvClusterTheme>
                 accentColor: widget.accentColor,
               ),
             ),
+            
+            if (showTempWarning)
+              const Positioned(
+                top: 20,
+                left: 0,
+                right: 0,
+                child: Center(child: _TempWarningOverlay()),
+              ),
+
             Column(
               children: [
                 const SizedBox(height: 60),
@@ -138,14 +162,17 @@ class _EvClusterThemeState extends State<EvClusterTheme>
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              _CircularGauge(
-                                value: widget.data.rpmThousands,
-                                maxValue: 8,
-                                label: '1/minx1000',
-                                accentColor: widget.accentColor,
-                                centerValue:
-                                    widget.data.rpmThousands.round().toString(),
-                                isRpm: true,
+                              RpmWarningAnimation(
+                                rpm: (widget.data.rpmThousands * 1000).toInt(),
+                                child: _CircularGauge(
+                                  value: widget.data.rpmThousands,
+                                  maxValue: 8,
+                                  label: '1/minx1000',
+                                  accentColor: widget.accentColor,
+                                  centerValue:
+                                      widget.data.rpmThousands.round().toString(),
+                                  isRpm: true,
+                                ),
                               ),
                               const SizedBox(height: 20),
                               Row(
@@ -155,17 +182,17 @@ class _EvClusterThemeState extends State<EvClusterTheme>
                                     icon: Icons.thermostat_rounded,
                                     value: '${widget.data.coolantTemp.round()}°',
                                     label: 'THERMAL',
-                                    color: widget.accentColor,
-                                    scale: 1.0,
+                                    color: widget.data.coolantTemp >= settings.tempAlertThreshold ? Colors.redAccent : widget.accentColor,
+                                    scale: 1.2,
                                   ),
-                                  const SizedBox(width: 10),
+                                  const SizedBox(width: 15),
                                   _SmallGadget(
                                     icon: Icons.bolt_rounded,
                                     value:
                                         '${widget.data.voltage.toStringAsFixed(1)}V',
                                     label: 'ENERGY',
                                     color: widget.accentColor,
-                                    scale: 1.0,
+                                    scale: 1.2,
                                   ),
                                 ],
                               ),
@@ -196,40 +223,46 @@ class _MusicHubSmall extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final music = context.watch<MusicProvider>();
+    
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: 16,
         vertical: 10,
       ),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.black.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: accentColor.withOpacity(0.2),
+          color: accentColor.withOpacity(0.1),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: accentColor.withOpacity(0.05),
-            blurRadius: 10,
-          ),
-        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: accentColor.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.music_note_rounded,
-              color: accentColor,
-              size: 18,
-            ),
+          IconButton(
+            onPressed: music.previous,
+            icon: const Icon(Icons.skip_previous_rounded, color: Colors.white70, size: 20),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
+          IconButton(
+            onPressed: music.playPause,
+            icon: Icon(music.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.white, size: 24),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          const SizedBox(width: 10),
+          IconButton(
+            onPressed: music.next,
+            icon: const Icon(Icons.skip_next_rounded, color: Colors.white70, size: 20),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          const SizedBox(width: 15),
+          const VerticalDivider(color: Colors.white10, indent: 5, endIndent: 5),
+          const SizedBox(width: 15),
           Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -245,13 +278,13 @@ class _MusicHubSmall extends StatelessWidget {
               ),
               ConstrainedBox(
                 constraints: const BoxConstraints(
-                  maxWidth: 160,
+                  maxWidth: 140,
                 ),
                 child: Text(
-                  title.isEmpty ? 'DashCore Audio' : title,
+                  music.trackTitle.isEmpty ? 'DashCore Audio' : music.trackTitle,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.bold,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -264,6 +297,7 @@ class _MusicHubSmall extends StatelessWidget {
     );
   }
 }
+
 
 class _CenterDisplay extends StatelessWidget {
   final String modelPath;
@@ -302,7 +336,7 @@ class _CenterDisplay extends StatelessWidget {
                 ),
               ),
               SizedBox(
-                width: 320,
+                width: 320, 
                 child: ModelViewer(
                   key: ValueKey(modelPath),
                   backgroundColor: Colors.transparent,
@@ -312,8 +346,10 @@ class _CenterDisplay extends StatelessWidget {
                   cameraControls: false,
                   disableZoom: true,
                   disablePan: true,
-                  cameraOrbit: '0deg 80deg 4m',
+                  cameraOrbit: '180deg 60deg 4m', // Aerial 360 view
+                  loading: Loading.lazy, // Lazy for 32bit stability
                   exposure: 1.0,
+                  shadowIntensity: 0.1, // Reduced for 32bit
                 ),
               ),
             ],
@@ -391,6 +427,32 @@ class _CenterDisplay extends StatelessWidget {
   }
 }
 
+class _TempWarningOverlay extends StatelessWidget {
+  const _TempWarningOverlay();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [BoxShadow(color: Colors.red.withOpacity(0.5), blurRadius: 20)],
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.white, size: 28),
+          SizedBox(width: 12),
+          Text(
+            '¡TEMPERATURA ALTA!',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: 1),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SmallGadget extends StatelessWidget {
   final IconData icon;
   final String value;
@@ -452,12 +514,15 @@ class _SmallGadget extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 4),
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28, // Increased
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ],
@@ -721,16 +786,16 @@ class _RoadPainter extends CustomPainter {
     );
 
     final dashPaint = Paint()
-      ..color = color.withOpacity(0.25)
+      ..color = color.withOpacity(0.35)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+      ..strokeWidth = 2.5;
 
-    // 3 carriles (2 líneas divisorias)
-    for (final dx in [-0.1, 0.1]) {
-      double distance = (animationValue * 150) % 80;
+    // 3 carriles del mismo tamaño
+    for (final dx in [-0.25, 0.0, 0.25]) {
+      double distance = (animationValue * 180) % 100;
 
-      const dashWidth = 40.0;
-      const dashGap = 40.0;
+      const dashWidth = 50.0;
+      const dashGap = 50.0;
 
       final start = Offset(
         w / 2 + dx * w,

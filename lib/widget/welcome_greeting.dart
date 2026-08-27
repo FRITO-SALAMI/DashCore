@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'package:dashcore/utils/app_localizations.dart';
 
 class PremiumWelcomeOverlay extends StatefulWidget {
   final String username;
@@ -90,6 +91,7 @@ class _PremiumWelcomeOverlayState extends State<PremiumWelcomeOverlay>
   @override
   Widget build(BuildContext context) {
     const themeColor = Color(0xFF00E5FF);
+    final loc = AppLocalizations.of(context);
 
     return Material(
       color: Colors.transparent,
@@ -109,7 +111,7 @@ class _PremiumWelcomeOverlayState extends State<PremiumWelcomeOverlay>
                 builder: (context, child) {
                   return Transform.scale(
                     scale: _pulseAnimation.value,
-                    child: _buildStartButton(themeColor),
+                    child: _buildStartButton(themeColor, loc),
                   );
                 },
               ),
@@ -148,13 +150,13 @@ class _PremiumWelcomeOverlayState extends State<PremiumWelcomeOverlay>
                         child: const Icon(Icons.speed_rounded, color: themeColor, size: 100),
                       ),
                       const SizedBox(height: 40),
-                      const Text(
-                        'SYSTEMS ONLINE',
+                      Text(
+                        'SYSTEMS ONLINE', // Technical phrase usually in English
                         style: TextStyle(color: themeColor, fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 12),
                       ),
                       const SizedBox(height: 20),
                       Text(
-                        'WELCOME',
+                        loc.translate('main_menu').toUpperCase() == 'AJUSTES' ? 'BIENVENIDO' : 'WELCOME', // Simplified for now or add to loc
                         style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 8),
                       ),
                       const SizedBox(height: 8),
@@ -181,12 +183,15 @@ class _PremiumWelcomeOverlayState extends State<PremiumWelcomeOverlay>
     );
   }
 
-  Widget _buildStartButton(Color color) {
+  Widget _buildStartButton(Color color, AppLocalizations loc) {
     if (widget.design == 1) {
       return Container(
         padding: const EdgeInsets.all(30),
         decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white24)),
-        child: const Text('IGNITION', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: 5)),
+        child: Text(
+          loc.translate('lang') == 'IDIOMA' ? 'ENCENDIDO' : 'IGNITION', 
+          style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: 5)
+        ),
       );
     }
     
@@ -204,8 +209,14 @@ class _PremiumWelcomeOverlayState extends State<PremiumWelcomeOverlay>
         children: [
           Icon(widget.design == 2 ? Icons.bolt_rounded : Icons.power_settings_new_rounded, color: color, size: 50),
           const SizedBox(height: 10),
-          Text(widget.design == 2 ? 'CORE' : 'ENGINE', style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 2)),
-          Text(widget.design == 2 ? 'ACTIVE' : 'START', style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 4)),
+          Text(
+            widget.design == 2 ? 'CORE' : 'ENGINE', 
+            style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 2)
+          ),
+          Text(
+            widget.design == 2 ? 'ACTIVE' : (loc.translate('lang') == 'IDIOMA' ? 'INICIO' : 'START'), 
+            style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 4)
+          ),
         ],
       ),
     );
@@ -241,32 +252,65 @@ class _DashSweepPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color.withOpacity(0.8)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
+    final center = Offset(size.width / 2, size.height * 0.8);
+    final radius = size.width * 0.4;
 
-    final center = Offset(size.width / 2, size.height);
-    final radius = size.width / 2;
+    final bgPaint = Paint()
+      ..color = Colors.white.withOpacity(0.05)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+
+    // Draw background arc
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      math.pi,
+      math.pi,
+      false,
+      bgPaint,
+    );
+
+    // Draw indicators (markers)
+    final markerPaint = Paint()..strokeWidth = 2..strokeCap = StrokeCap.round;
+    for (int i = 0; i <= 20; i++) {
+      final angle = math.pi + (math.pi * (i / 20));
+      final isReached = (i / 20) <= progress;
+      markerPaint.color = isReached ? color : Colors.white10;
+      
+      final tickLength = i % 5 == 0 ? 15.0 : 8.0;
+      final start = center + Offset(math.cos(angle) * (radius - tickLength), math.sin(angle) * (radius - tickLength));
+      final end = center + Offset(math.cos(angle) * radius, math.sin(angle) * radius);
+      
+      canvas.drawLine(start, end, markerPaint);
+    }
+
+    // Draw active arc
+    final activePaint = Paint()
+      ..color = color.withOpacity(0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
 
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       math.pi,
       math.pi * progress,
       false,
-      paint,
+      activePaint,
     );
 
-    final linePaint = Paint()..color = color.withOpacity(0.2)..strokeWidth = 1;
-    for (int i = 0; i < 20; i++) {
-      final angle = math.pi + (math.pi * progress * (i / 20));
-      canvas.drawLine(
-        center,
-        center + Offset(math.cos(angle) * radius, math.sin(angle) * radius),
-        linePaint,
-      );
-    }
+    // Draw Needle
+    final needleAngle = math.pi + (math.pi * progress);
+    final needlePaint = Paint()
+      ..color = color
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+
+    final needleEnd = center + Offset(math.cos(needleAngle) * (radius - 5), math.sin(needleAngle) * (radius - 5));
+    canvas.drawLine(center, needleEnd, needlePaint);
+    
+    // Needle center point
+    canvas.drawCircle(center, 6, Paint()..color = color);
+    canvas.drawCircle(center, 3, Paint()..color = Colors.black);
   }
 
   @override

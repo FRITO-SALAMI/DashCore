@@ -1,13 +1,18 @@
 package com.dashcore.app
 
+import android.content.Context
+import android.media.AudioManager
+
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.view.KeyEvent
-import android.media.AudioManager
-import android.content.Context
+import android.media.session.MediaSessionManager
+import android.media.session.MediaController
+import android.content.ComponentName
+import android.os.Build
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "io.dashcore.app/launcher"
@@ -54,16 +59,47 @@ class MainActivity: FlutterActivity() {
             "previous" -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
             else -> return
         }
-        
+
+        // Method 1: AudioManager (Legacy but reliable for many)
         am.dispatchMediaKeyEvent(KeyEvent(eventTime, eventTime, KeyEvent.ACTION_DOWN, keyCode, 0))
         am.dispatchMediaKeyEvent(KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, keyCode, 0))
 
-        // Force a broadcast for apps that don't listen to key events directly
-        val intent = Intent(Intent.ACTION_MEDIA_BUTTON)
-        intent.putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(eventTime, eventTime, KeyEvent.ACTION_DOWN, keyCode, 0))
-        sendOrderedBroadcast(intent, null)
-        intent.putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, keyCode, 0))
-        sendOrderedBroadcast(intent, null)
+        // Method 2: MediaSession (Modern, requires notification access for full control)
+        try {
+            val mm = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+            val controllers = mm.getActiveSessions(null)
+            if (controllers.isNotEmpty()) {
+                for (controller in controllers) {
+                    val controls = controller.transportControls
+                    when (command) {
+                        "playPause" -> {
+                            val state = controller.playbackState
+                            if (state != null && state.state == android.media.session.PlaybackState.STATE_PLAYING) {
+                                controls.pause()
+                            } else {
+                                controls.play()
+                            }
+                        }
+                        "next" -> controls.skipToNext()
+                        "previous" -> controls.skipToPrevious()
+                    }
+                }
+            } else {
+                // Fallback to broadcast if no active sessions found via Manager
+                val intent = Intent(Intent.ACTION_MEDIA_BUTTON)
+                intent.putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(eventTime, eventTime, KeyEvent.ACTION_DOWN, keyCode, 0))
+                sendOrderedBroadcast(intent, null)
+                intent.putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, keyCode, 0))
+                sendOrderedBroadcast(intent, null)
+            }
+        } catch (e: Exception) {
+            // Fallback to broadcasts on any error (like security exception)
+            val intent = Intent(Intent.ACTION_MEDIA_BUTTON)
+            intent.putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(eventTime, eventTime, KeyEvent.ACTION_DOWN, keyCode, 0))
+            sendOrderedBroadcast(intent, null)
+            intent.putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, keyCode, 0))
+            sendOrderedBroadcast(intent, null)
+        }
     }
 
     private fun getInstalledApps(): List<Map<String, String>> {

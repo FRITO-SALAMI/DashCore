@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../widgets/rpm_warning_animation.dart';
 import '../dashboard_background.dart';
 
 class SportyDashboard extends StatelessWidget {
@@ -81,63 +82,66 @@ class SportyDashboard extends StatelessWidget {
 
               // Main Gauge (Speed & RPM)
               Center(
-                child: AnimatedScale(
-                  duration: const Duration(milliseconds: 200),
-                  scale: isCompetitive ? 1.05 : 1.0,
-                  child: SizedBox(
-                    width: mainGaugeSize,
-                    height: mainGaugeSize,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CustomPaint(
-                          size: Size.square(mainGaugeSize),
-                          painter: _RealDashRpmPainter(
-                            rpm: rpm,
-                            accentColor: isCompetitive ? Colors.redAccent : accentColor,
-                            needleColor: needleColor,
+                child: RpmWarningAnimation(
+                  rpm: rpm,
+                  child: AnimatedScale(
+                    duration: const Duration(milliseconds: 200),
+                    scale: isCompetitive ? 1.05 : 1.0,
+                    child: SizedBox(
+                      width: mainGaugeSize,
+                      height: mainGaugeSize,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CustomPaint(
+                            size: Size.square(mainGaugeSize),
+                            painter: _RealDashRpmPainter(
+                              rpm: rpm,
+                              accentColor: isCompetitive ? Colors.redAccent : accentColor,
+                              needleColor: needleColor,
+                            ),
                           ),
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '$speed',
-                              style: TextStyle(
-                                color: isCompetitive ? Colors.redAccent : Colors.white,
-                                fontSize: mainGaugeSize * 0.28,
-                                fontWeight: FontWeight.w900,
-                                fontStyle: FontStyle.italic,
-                                height: 1.0,
-                                shadows: [
-                                  Shadow(
-                                    color: isCompetitive ? Colors.red : Colors.blueAccent.withOpacity(0.5),
-                                    blurRadius: 20,
-                                  ),
-                                ],
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '$speed',
+                                style: TextStyle(
+                                  color: isCompetitive ? Colors.redAccent : Colors.white,
+                                  fontSize: mainGaugeSize * 0.28,
+                                  fontWeight: FontWeight.w900,
+                                  fontStyle: FontStyle.italic,
+                                  height: 1.0,
+                                  shadows: [
+                                    Shadow(
+                                      color: isCompetitive ? Colors.red : Colors.blueAccent.withOpacity(0.5),
+                                      blurRadius: 20,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            Text(
-                              'KM/H',
-                              style: TextStyle(
-                                color: Colors.white38,
-                                fontSize: mainGaugeSize * 0.04,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 8,
+                              Text(
+                                'KM/H',
+                                style: TextStyle(
+                                  color: Colors.white38,
+                                  fontSize: mainGaugeSize * 0.04,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 8,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              _calculateGear(speed, rpm),
-                              style: TextStyle(
-                                color: isCompetitive ? Colors.redAccent : accentColor,
-                                fontSize: mainGaugeSize * 0.1,
-                                fontWeight: FontWeight.w900,
+                              const SizedBox(height: 10),
+                              Text(
+                                _calculateGear(speed, rpm),
+                                style: TextStyle(
+                                  color: isCompetitive ? Colors.redAccent : accentColor,
+                                  fontSize: mainGaugeSize * 0.1,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

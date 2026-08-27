@@ -7,7 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart' as url_launcher;
 
 import '../providers/dash_settings_provider.dart';
 import '../providers/obd_provider.dart';
@@ -43,11 +45,9 @@ void showSettingsSheet(BuildContext context) {
         sheetContext,
         scrollController,
       ) {
-        return NotificationListener<
-            DraggableScrollableNotification>(
+        return NotificationListener<DraggableScrollableNotification>(
           onNotification: (notification) {
-            if (notification.extent <=
-                notification.minExtent + 0.01) {
+            if (notification.extent <= notification.minExtent + 0.01) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (Navigator.canPop(sheetContext)) {
                   Navigator.pop(sheetContext);
@@ -98,6 +98,22 @@ class _SettingsSheetState extends State<SettingsSheet> {
     _user = SupabaseService.instance.currentUser;
   }
 
+  Future<void> _openAuthScreen() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const AuthScreen(),
+      ),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _user = SupabaseService.instance.currentUser;
+    });
+  }
+
   Future<void> _signOut() async {
     await Supabase.instance.client.auth.signOut();
 
@@ -121,7 +137,9 @@ class _SettingsSheetState extends State<SettingsSheet> {
       maxHeight: 512,
     );
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     if (image != null) {
       settings.setProfileImageUrl(image.path);
@@ -221,8 +239,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
                             Navigator.pop(ctx);
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                const Color(0xFF00E5FF),
+                            backgroundColor: const Color(0xFF00E5FF),
                           ),
                           child: const Text(
                             'ESTABLECER',
@@ -295,28 +312,25 @@ class _SettingsSheetState extends State<SettingsSheet> {
                       controller: scrollController,
                       itemCount: settings.availableVehicles.length,
                       itemBuilder: (context, index) {
-                        final vehicle = settings.availableVehicles[index];
+                        final vehicle =
+                            settings.availableVehicles[index];
 
                         final isSelected =
-                            settings.selectedVehicle?.id ==
-                                vehicle.id;
+                            settings.selectedVehicle?.id == vehicle.id;
 
-                        final bool isLocal = vehicle.modelPath.startsWith('assets/');
-                        final bool needsDownload = !isLocal && !vehicle.isDownloaded;
+                        final bool isLocal =
+                            vehicle.modelPath.startsWith('assets/');
+
+                        final bool needsDownload =
+                            !isLocal && !vehicle.isDownloaded;
 
                         return Container(
-                          margin: const EdgeInsets.only(
-                            bottom: 10,
-                          ),
+                          margin: const EdgeInsets.only(bottom: 10),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? const Color(0xFF00E5FF)
-                                    .withOpacity(0.1)
-                                : Colors.white.withOpacity(
-                                    0.03,
-                                  ),
-                            borderRadius:
-                                BorderRadius.circular(12),
+                                ? const Color(0xFF00E5FF).withOpacity(0.1)
+                                : Colors.white.withOpacity(0.03),
+                            borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: isSelected
                                   ? const Color(0xFF00E5FF)
@@ -325,8 +339,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
                           ),
                           child: ListTile(
                             leading: Container(
-                              padding:
-                                  const EdgeInsets.all(8),
+                              padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? const Color(0xFF00E5FF)
@@ -335,10 +348,14 @@ class _SettingsSheetState extends State<SettingsSheet> {
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
-                                needsDownload ? Icons.cloud_download_rounded : Icons.directions_car,
+                                needsDownload
+                                    ? Icons.cloud_download_rounded
+                                    : Icons.directions_car,
                                 color: isSelected
                                     ? const Color(0xFF00E5FF)
-                                    : (needsDownload ? Colors.orangeAccent : Colors.white54),
+                                    : (needsDownload
+                                        ? Colors.orangeAccent
+                                        : Colors.white54),
                                 size: 20,
                               ),
                             ),
@@ -354,16 +371,18 @@ class _SettingsSheetState extends State<SettingsSheet> {
                               ),
                             ),
                             subtitle: Text(
-                              needsDownload ? 'Requiere descarga' : vehicle.brand,
+                              needsDownload
+                                  ? 'Requiere descarga'
+                                  : vehicle.brand,
                               style: TextStyle(
-                                color: needsDownload ? Colors.orangeAccent.withOpacity(0.6) : Colors.white38,
+                                color: needsDownload
+                                    ? Colors.orangeAccent.withOpacity(0.6)
+                                    : Colors.white38,
                                 fontSize: 11,
                               ),
                             ),
                             onTap: () {
-                              settings.selectVehicle(
-                                vehicle,
-                              );
+                              settings.selectVehicle(vehicle);
                               Navigator.pop(ctx);
                             },
                           ),
@@ -382,9 +401,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final settings =
-        context.watch<DashSettingsProvider>();
-
+    final settings = context.watch<DashSettingsProvider>();
     final loc = AppLocalizations.of(context);
 
     const themeColor = Color(0xFF00E5FF);
@@ -396,481 +413,567 @@ class _SettingsSheetState extends State<SettingsSheet> {
           top: Radius.circular(28),
         ),
         child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xF2090B0F),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(28),
-              ),
+          decoration: BoxDecoration(
+            color: const Color(0xF2090B0F),
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(28),
             ),
-            child: SingleChildScrollView(
-              controller: widget.scrollController,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                children: [
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white12,
-                      borderRadius: BorderRadius.circular(2),
+          ),
+          child: SingleChildScrollView(
+            controller: widget.scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white12,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white10,
                     ),
                   ),
-                  const SizedBox(height: 24),
-
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color:
-                          Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.white10,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: _user != null
-                              ? () =>
-                                  _pickProfileImage(settings)
-                              : null,
-                          child: Stack(
-                            children: [
-                              CircleAvatar(
-                                radius: 25,
-                                backgroundColor: _user != null
-                                    ? Colors.greenAccent
-                                    : themeColor,
-                                backgroundImage:
-                                    settings.profileImageUrl !=
-                                                null &&
-                                            !settings
-                                                .profileImageUrl!
-                                                .startsWith(
-                                                    'http')
-                                        ? FileImage(
-                                            File(
-                                              settings
-                                                  .profileImageUrl!,
-                                            ),
-                                          )
-                                        : settings
-                                                    .profileImageUrl !=
-                                                null
-                                            ? NetworkImage(
-                                                settings
-                                                    .profileImageUrl!,
-                                              )
-                                            : null,
-                                child: settings.profileImageUrl ==
-                                        null
-                                    ? Icon(
-                                        _user != null
-                                            ? Icons
-                                                .verified_user_rounded
-                                            : Icons
-                                                .person_rounded,
-                                        color: Colors.black,
-                                        size: 30,
-                                      )
-                                    : null,
-                              ),
-                              if (_user != null)
-                                Positioned(
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Container(
-                                    padding:
-                                        const EdgeInsets.all(2),
-                                    decoration:
-                                        const BoxDecoration(
-                                      color: themeColor,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons
-                                          .add_a_photo_rounded,
-                                      size: 12,
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: _user != null
+                            ? () => _pickProfileImage(settings)
+                            : null,
+                        child: Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 25,
+                              backgroundColor: _user != null
+                                  ? Colors.greenAccent
+                                  : themeColor,
+                              backgroundImage:
+                                  settings.profileImageUrl != null &&
+                                          !settings.profileImageUrl!
+                                              .startsWith('http')
+                                      ? FileImage(
+                                          File(
+                                            settings.profileImageUrl!,
+                                          ),
+                                        )
+                                      : settings.profileImageUrl != null
+                                          ? NetworkImage(
+                                              settings.profileImageUrl!,
+                                            )
+                                          : null,
+                              child: settings.profileImageUrl == null
+                                  ? Icon(
+                                      _user != null
+                                          ? Icons.verified_user_rounded
+                                          : Icons.person_rounded,
                                       color: Colors.black,
-                                    ),
+                                      size: 30,
+                                    )
+                                  : null,
+                            ),
+                            if (_user != null)
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: const BoxDecoration(
+                                    color: themeColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.add_a_photo_rounded,
+                                    size: 12,
+                                    color: Colors.black,
                                   ),
                                 ),
-                            ],
-                          ),
+                              ),
+                          ],
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _user != null
-                                    ? (_user!.email ??
-                                            'USUARIO')
-                                        .toUpperCase()
-                                    : 'USUARIO INVITADO',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 13,
-                                ),
-                                maxLines: 1,
-                                overflow:
-                                    TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _user != null
+                                  ? (_user!.email ?? 'USUARIO').toUpperCase()
+                                  : 'USUARIO INVITADO',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 13,
                               ),
-                              Text(
-                                _user != null
-                                    ? 'Sincronización Supabase activa'
-                                    : 'Inicia sesión para sincronizar',
-                                style: TextStyle(
-                                  color: Colors.white
-                                      .withOpacity(0.4),
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (_user == null)
-                          ElevatedButton(
-                            onPressed: () async {
-                              final navigator = Navigator.of(
-                                context,
-                                rootNavigator: true,
-                              );
-                              navigator.pop();
-
-                              await Future<void>.delayed(
-                                const Duration(milliseconds: 280),
-                              );
-
-                              navigator.push(
-                                MaterialPageRoute<bool>(
-                                  fullscreenDialog: true,
-                                  builder: (_) => const AuthScreen(),
-                                ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: themeColor,
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              shape:
-                                  RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(10),
-                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            child: const Text(
-                              'LOGIN',
+                            Text(
+                              _user != null
+                                  ? 'Sincronización Supabase activa'
+                                  : 'Inicia sesión para sincronizar',
                               style: TextStyle(
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                                color: Colors.white.withOpacity(0.4),
+                                fontSize: 10,
                               ),
                             ),
-                          )
-                        else
-                          IconButton(
-                            icon: const Icon(
-                              Icons.logout_rounded,
-                              color: Colors.redAccent,
-                            ),
-                            onPressed: _signOut,
+                          ],
+                        ),
+                      ),
+
+                      if (_user == null)
+                        ElevatedButton.icon(
+                          onPressed: _openAuthScreen,
+                          icon: const Icon(
+                            Icons.login_rounded,
+                            size: 16,
                           ),
+                          label: const Text(
+                            'INICIAR SESIÓN',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: themeColor,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        )
+                      else ...[
+                        IconButton(
+                          icon: const Icon(
+                            Icons.share_rounded,
+                            color: themeColor,
+                          ),
+                          onPressed: () {
+                            final text =
+                                '¡Mira mi nivel en DashCore! Soy ${settings.driverLevel} con ${settings.totalDistance.toStringAsFixed(1)} KM recorridos. #DashCore #AndroidAuto';
+                            Share.share(text);
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.logout_rounded,
+                            color: Colors.redAccent,
+                          ),
+                          onPressed: _signOut,
+                        ),
                       ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        loc
-                            .translate('settings')
-                            .toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.close_rounded,
-                          color: Colors.white54,
-                        ),
-                        onPressed: () =>
-                            Navigator.pop(context),
-                      ),
                     ],
                   ),
+                ),
 
-                  const SizedBox(height: 24),
+                const SizedBox(height: 30),
 
-                  _SectionHeader(title: 'APARIENCIA'),
-                  const SizedBox(height: 12),
-
-                  _SettingsToggleTile(
-                    icon: Icons.bar_chart_rounded,
-                    label: 'ESTADÍSTICAS DE CONDUCCIÓN',
-                    value: 'VER MI PERFIL',
-                    onTap: () => _showStatistics(context, settings),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  _SettingsToggleTile(
-                    icon: Icons.language_rounded,
-                    label: loc.translate('lang'),
-                    value: settings.language ==
-                            Language.english
-                        ? 'English'
-                        : 'Español',
-                    onTap: () {
-                      settings.setLanguage(
-                        settings.language ==
-                                Language.english
-                            ? Language.spanish
-                            : Language.english,
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  _SettingsToggleTile(
-                    icon: Icons.waving_hand_rounded,
-                    label: 'SALUDO DE BIENVENIDA',
-                    value: settings.showWelcomeGreeting
-                        ? 'ACTIVADO'
-                        : 'DESACTIVADO',
-                    onTap: () =>
-                        settings.toggleWelcomeGreeting(
-                      !settings.showWelcomeGreeting,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      loc.translate('settings').toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 2,
+                      ),
                     ),
-                  ),
-
-                  if (settings.showWelcomeGreeting) ...[
-                    const SizedBox(height: 12),
-                    _SettingsSliderTile(
-                      icon: Icons.timer_rounded,
-                      label: 'DURACIÓN SALUDO',
-                      value:
-                          settings.welcomeGreetingDuration,
-                      min: 3,
-                      max: 15,
-                      suffix: 's',
-                      onChanged: (v) =>
-                          settings
-                              .setWelcomeGreetingDuration(v),
-                    ),
-                    const SizedBox(height: 12),
-                    _SettingsToggleTile(
-                      icon: Icons.animation_rounded,
-                      label: 'DISEÑO DE ENCENDIDO',
-                      value: 'DISEÑO ${settings.welcomeDesign + 1}',
-                      onTap: () {
-                         int next = (settings.welcomeDesign + 1) % 3;
-                         settings.setWelcomeDesign(next);
-                      },
+                    IconButton(
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white54,
+                      ),
+                      onPressed: () => Navigator.pop(context),
                     ),
                   ],
+                ),
 
-                  const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-                  _SectionHeader(title: 'SISTEMA'),
-                  const SizedBox(height: 12),
+                _SectionHeader(title: 'APARIENCIA'),
+                const SizedBox(height: 12),
 
-                  _SettingsToggleTile(
-                    icon: Icons.local_gas_station_rounded,
-                    label: 'SIMULADOR DE COMBUSTIBLE',
-                    value: settings.useSimulatedFuel
-                        ? '${settings.simulatedFuelLevel.toStringAsFixed(1)}%'
-                        : 'DESACTIVADO (REAL)',
-                    onTap: () =>
-                        _showFuelLevelSelection(
-                      context,
-                      settings,
-                    ),
+                _SettingsToggleTile(
+                  icon: Icons.bar_chart_rounded,
+                  label: 'ESTADÍSTICAS DE CONDUCCIÓN',
+                  value: 'VER MI PERFIL',
+                  onTap: () => _showStatistics(context, settings),
+                ),
+
+                const SizedBox(height: 12),
+
+                _SettingsToggleTile(
+                  icon: Icons.language_rounded,
+                  label: loc.translate('lang'),
+                  value: settings.language == Language.english
+                      ? 'English'
+                      : 'Español',
+                  onTap: () {
+                    settings.setLanguage(
+                      settings.language == Language.english
+                          ? Language.spanish
+                          : Language.english,
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                _SettingsToggleTile(
+                  icon: Icons.waving_hand_rounded,
+                  label: 'SALUDO DE BIENVENIDA',
+                  value: settings.showWelcomeGreeting
+                      ? 'ACTIVADO'
+                      : 'DESACTIVADO',
+                  onTap: () => settings.toggleWelcomeGreeting(
+                    !settings.showWelcomeGreeting,
                   ),
+                ),
 
+                const SizedBox(height: 12),
+
+                _SettingsToggleTile(
+                  icon: Icons.local_gas_station_rounded,
+                  label: 'INDICADOR DE COMBUSTIBLE',
+                  value: settings.showFuelGauge
+                      ? 'ACTIVADO'
+                      : 'DESACTIVADO',
+                  onTap: () => settings.toggleShowFuelGauge(
+                    !settings.showFuelGauge,
+                  ),
+                ),
+
+                if (settings.showWelcomeGreeting) ...[
                   const SizedBox(height: 12),
-
+                  _SettingsSliderTile(
+                    icon: Icons.timer_rounded,
+                    label: 'DURACIÓN SALUDO',
+                    value: settings.welcomeGreetingDuration,
+                    min: 3,
+                    max: 15,
+                    suffix: 's',
+                    onChanged: (v) =>
+                        settings.setWelcomeGreetingDuration(v),
+                  ),
+                  const SizedBox(height: 12),
                   _SettingsToggleTile(
-                    icon: Icons.thermostat_outlined,
-                    label: loc.translate('temp_unit'),
-                    value: settings.tempUnit ==
-                            TemperatureUnit.celsius
-                        ? 'Celsius (°C)'
-                        : 'Fahrenheit (°F)',
+                    icon: Icons.animation_rounded,
+                    label: 'DISEÑO DE ENCENDIDO',
+                    value: 'DISEÑO ${settings.welcomeDesign + 1}',
                     onTap: () {
-                      settings.setTempUnit(
-                        settings.tempUnit ==
-                                TemperatureUnit.celsius
-                            ? TemperatureUnit.fahrenheit
-                            : TemperatureUnit.celsius,
-                      );
+                      final int next =
+                          (settings.welcomeDesign + 1) % 3;
+                      settings.setWelcomeDesign(next);
                     },
                   ),
+                ],
 
-                  const SizedBox(height: 12),
+                const SizedBox(height: 24),
+
+                _SectionHeader(title: 'SISTEMA'),
+                const SizedBox(height: 12),
+
+                _SettingsSliderTile(
+                  icon: Icons.thermostat_rounded,
+                  label: 'ALERTA DE TEMPERATURA',
+                  value: settings.tempAlertThreshold,
+                  min: 80,
+                  max: 130,
+                  suffix: '°C',
+                  onChanged: (v) =>
+                      settings.setTempAlertThreshold(v),
+                ),
+
+                const SizedBox(height: 12),
+
+                _SettingsToggleTile(
+                  icon: Icons.local_gas_station_rounded,
+                  label: 'SIMULADOR DE COMBUSTIBLE',
+                  value: settings.useSimulatedFuel
+                      ? '${settings.simulatedFuelLevel.toStringAsFixed(1)}%'
+                      : 'DESACTIVADO (REAL)',
+                  onTap: () => _showFuelLevelSelection(
+                    context,
+                    settings,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                _SettingsToggleTile(
+                  icon: Icons.thermostat_outlined,
+                  label: loc.translate('temp_unit'),
+                  value: settings.tempUnit == TemperatureUnit.celsius
+                      ? 'Celsius (°C)'
+                      : 'Fahrenheit (°F)',
+                  onTap: () {
+                    settings.setTempUnit(
+                      settings.tempUnit == TemperatureUnit.celsius
+                          ? TemperatureUnit.fahrenheit
+                          : TemperatureUnit.celsius,
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                _SettingsToggleTile(
+                  icon: Icons.location_on_rounded,
+                  label: 'MODO DE FUNCIONAMIENTO',
+                  value: settings.isNoObdMode
+                      ? 'MODO GPS'
+                      : 'MODO OBD2',
+                  onTap: () {
+                    final obd = context.read<ObdProvider>();
+
+                    if (settings.isNoObdMode) {
+                      settings.toggleNoObdMode(false);
+                      obd.stopGpsMode();
+                    } else {
+                      settings.toggleNoObdMode(true);
+                      obd.toggleGpsMode();
+                    }
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                _SettingsToggleTile(
+                  icon: Icons.directions_car_rounded,
+                  label: 'VEHÍCULO',
+                  value: settings.selectedVehicle?.name ??
+                      'SIN SELECCIONAR',
+                  onTap: () => _showVehicleSelection(
+                    context,
+                    settings,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                _SectionHeader(
+                  title: 'RENDIMIENTO Y DATOS',
+                ),
+                const SizedBox(height: 12),
+
+                _SettingsToggleTile(
+                  icon: Icons.analytics_rounded,
+                  label: 'ANALÍTICA DE SUPABASE',
+                  value: settings.analyticsConsent
+                      ? 'ACTIVADO'
+                      : 'DESACTIVADO',
+                  onTap: () => settings.setAnalyticsConsent(
+                    !settings.analyticsConsent,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                _SettingsToggleTile(
+                  icon: Icons.bolt_rounded,
+                  label: 'MODO ESPECIAL (FAST DATA)',
+                  value: settings.isPerformanceMode
+                      ? 'ACTIVADO (10Hz)'
+                      : 'DESACTIVADO (2Hz)',
+                  onTap: () {
+                    final value =
+                        !settings.isPerformanceMode;
+
+                    settings.togglePerformanceMode(value);
+
+                    context
+                        .read<ObdProvider>()
+                        .setPerformanceMode(value);
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                _SettingsToggleTile(
+                  icon: Icons.speed_rounded,
+                  label: 'MODO ADVANCED (ULTRA FAST)',
+                  value: settings.isAdvancedMode
+                      ? 'ACTIVADO (20Hz+)'
+                      : 'DESACTIVADO',
+                  onTap: () {
+                    final value =
+                        !settings.isAdvancedMode;
+
+                    settings.toggleAdvancedMode(value);
+
+                    context
+                        .read<ObdProvider>()
+                        .setAdvancedMode(value);
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                _SettingsToggleTile(
+                  icon: Icons.battery_saver_rounded,
+                  label: 'MODO AHORRO DE ENERGÍA',
+                  value: settings.isPowerSavingMode
+                      ? 'ACTIVADO'
+                      : 'DESACTIVADO',
+                  onTap: () {
+                    final val =
+                        !settings.isPowerSavingMode;
+
+                    settings.togglePowerSavingMode(val);
+
+                    context
+                        .read<ObdProvider>()
+                        .setPowerSavingMode(val);
+                  },
+                ),
+
+                const SizedBox(height: 24),
+
+                _SectionHeader(
+                  title: 'APP & INFORMACIÓN',
+                ),
+                const SizedBox(height: 12),
+
+                _SettingsToggleTile(
+                  icon: Icons.info_outline_rounded,
+                  label: 'ACERCA DE',
+                  value: 'DashCore v1.0.2',
+                  onTap: () {
+                    showAboutDialog(
+                      context: context,
+                      applicationName: 'DashCore',
+                      applicationVersion: '1.0.2+4',
+                      applicationIcon: Image.asset(
+                        'assets/icon/Logoapp.png',
+                        width: 50,
+                      ),
+                      children: [
+                        const Text(
+                          'DashCore es una plataforma de diagnóstico y personalización para vehículos.',
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Desarrollado por el equipo de DashCore.',
+                        ),
+                      ],
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 12),
 
                   _SettingsToggleTile(
-                    icon: Icons.location_on_rounded,
-                    label: 'MODO DE FUNCIONAMIENTO',
-                    value: settings.isNoObdMode
-                        ? 'MODO GPS'
-                        : 'MODO OBD2',
-                    onTap: () {
-                      final obd =
-                          context.read<ObdProvider>();
+                    icon: Icons.file_present_rounded,
+                    label: 'REVISAR ARCHIVOS',
+                    value: 'ESCANEAR APP',
+                    onTap: () async {
+                      // Show scanning dialog
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (ctx) => const AlertDialog(
+                          backgroundColor: Color(0xFF1A1D24),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(color: Color(0xFF00E5FF)),
+                              SizedBox(height: 20),
+                              Text('ESCANEANDO INTEGRIDAD...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              SizedBox(height: 10),
+                              Text('Verificando modelos y activos críticos', style: TextStyle(color: Colors.white38, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      );
 
-                      if (settings.isNoObdMode) {
-                        settings.toggleNoObdMode(false);
-                        obd.stopGpsMode();
+                      // Simulate scanning work for visual feedback
+                      await Future.delayed(const Duration(seconds: 2));
+                      final ok = await settings.verifyAppIntegrity();
+
+                      if (!mounted) return;
+                      Navigator.pop(context); // Close scanning dialog
+
+                      if (ok) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('TODOS LOS ARCHIVOS ESTÁN CORRECTOS'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
                       } else {
-                        settings.toggleNoObdMode(true);
-                        obd.toggleGpsMode();
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            backgroundColor: const Color(0xFF1A1D24),
+                            title: const Text(
+                              'ACTUALIZACIÓN NECESARIA',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            content: const Text(
+                              'Faltan algunos archivos del sistema o activos críticos. Descarga la última versión para corregirlo.',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('CERRAR'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  url_launcher.launchUrl(
+                                    Uri.parse(
+                                      'https://github.com/iUnreallx/DashCore/releases',
+                                    ),
+                                    mode: url_launcher.LaunchMode.externalApplication,
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF00E5FF),
+                                ),
+                                child: const Text(
+                                  'DESCARGAR',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
                       }
                     },
                   ),
 
-                  const SizedBox(height: 12),
-
-                  _SettingsToggleTile(
-                    icon: Icons.directions_car_rounded,
-                    label: 'VEHÍCULO',
-                    value: settings.selectedVehicle?.name ??
-                        'SIN SELECCIONAR',
-                    onTap: () =>
-                        _showVehicleSelection(
-                      context,
-                      settings,
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  _SectionHeader(
-                    title: 'RENDIMIENTO Y DATOS',
-                  ),
-                  const SizedBox(height: 12),
-
-                  _SettingsToggleTile(
-                    icon: Icons.bolt_rounded,
-                    label:
-                        'MODO ESPECIAL (FAST DATA)',
-                    value: settings.isPerformanceMode
-                        ? 'ACTIVADO (10Hz)'
-                        : 'DESACTIVADO (2Hz)',
-                    onTap: () {
-                      final value =
-                          !settings.isPerformanceMode;
-
-                      settings.togglePerformanceMode(
-                        value,
-                      );
-
-                      context
-                          .read<ObdProvider>()
-                          .setPerformanceMode(value);
-                    },
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  _SettingsToggleTile(
-                    icon: Icons.speed_rounded,
-                    label:
-                        'MODO ADVANCED (ULTRA FAST)',
-                    value: settings.isAdvancedMode
-                        ? 'ACTIVADO (20Hz+)'
-                        : 'DESACTIVADO',
-                    onTap: () {
-                      final value =
-                          !settings.isAdvancedMode;
-
-                      settings.toggleAdvancedMode(
-                        value,
-                      );
-
-                      context
-                          .read<ObdProvider>()
-                          .setAdvancedMode(value);
-                    },
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  _SettingsToggleTile(
-                    icon: Icons.battery_saver_rounded,
-                    label: 'MODO AHORRO DE ENERGÍA',
-                    value: settings.isPowerSavingMode
-                        ? 'ACTIVADO'
-                        : 'DESACTIVADO',
-                    onTap: () {
-                      final val = !settings.isPowerSavingMode;
-                      settings.togglePowerSavingMode(val);
-                      context.read<ObdProvider>().setPowerSavingMode(val);
-                    },
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  _SectionHeader(
-                    title: 'APP & ACTUALIZACIONES',
-                  ),
-                  const SizedBox(height: 12),
-
-                  _SettingsToggleTile(
-                    icon: Icons.update_rounded,
-                    label: 'ACTUALIZACIÓN',
-                    value: 'SISTEMA DE ACTUALIZACIÓN',
-                    onTap: () {
-                      Navigator.pop(context);
-                      // In a real app we'd trigger a nav in RootScreen
-                    },
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  _SettingsToggleTile(
-                    icon: Icons.info_outline_rounded,
-                    label: 'ACERCA DE',
-                    value: 'DashCore v1.0.2',
-                    onTap: () {
-                      showAboutDialog(
-                        context: context,
-                        applicationName: 'DashCore',
-                        applicationVersion: '1.0.2+4',
-                        applicationIcon: Image.asset('assets/icon/Logoapp.png', width: 50),
-                        children: [
-                          const Text('DashCore es una plataforma de diagnóstico y personalización para vehículos.'),
-                          const SizedBox(height: 10),
-                          const Text('Desarrollado por el equipo de DashCore.'),
-                        ],
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: 40),
-                ],
-              ),
+                const SizedBox(height: 40),
+              ],
             ),
           ),
         ),
-      );
+      ),
+    );
   }
+
   void _showStatistics(
     BuildContext context,
     DashSettingsProvider settings,
@@ -880,78 +983,245 @@ class _SettingsSheetState extends State<SettingsSheet> {
       isScrollControlled: true,
       backgroundColor: const Color(0xFF0D1117),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(30),
+        ),
       ),
       builder: (ctx) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.8,
-          maxChildSize: 0.95,
-          minChildSize: 0.5,
-          expand: false,
-          builder: (_, scrollController) {
-            return Padding(
-              padding: const EdgeInsets.all(30),
-              child: Column(
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(30, 20, 30, 30),
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // COMPACT
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white12,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 25),
+              const Text(
+                'PERFIL DE CONDUCTOR',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00E5FF).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  settings.driverLevel,
+                  style: const TextStyle(
+                    color: Color(0xFF00E5FF),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 25),
+              // Ultra compact stats row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2))),
-                  const SizedBox(height: 30),
-                  const Text('PERFIL DE CONDUCTOR', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2)),
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(color: const Color(0xFF00E5FF).withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                    child: Text(settings.driverLevel, style: const TextStyle(color: Color(0xFF00E5FF), fontWeight: FontWeight.bold, fontSize: 14)),
-                  ),
-                  const SizedBox(height: 40),
-                  Expanded(
-                    child: GridView.count(
-                      controller: scrollController,
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 20,
-                      crossAxisSpacing: 20,
-                      childAspectRatio: 1.2,
-                      children: [
-                        _StatCard(label: 'DISTANCIA TOTAL', value: '${settings.totalDistance.toStringAsFixed(1)} KM', icon: Icons.map_rounded),
-                        _StatCard(label: 'VELOCIDAD MÁX', value: '${settings.maxSpeed.round()} KM/H', icon: Icons.speed_rounded),
-                        _StatCard(label: 'VIAJES TOTALES', value: '${settings.totalTrips}', icon: Icons.route_rounded),
-                        _StatCard(label: 'TIEMPO TOTAL', value: '${settings.totalDriveTime.inHours}H ${settings.totalDriveTime.inMinutes % 60}M', icon: Icons.timer_rounded),
-                      ],
-                    ),
-                  ),
+                  _StatItemCompact(label: 'DIST.', value: '${settings.totalDistance.round()}KM', icon: Icons.map_rounded),
+                  _StatItemCompact(label: 'MÁX.', value: '${settings.maxSpeed.round()}KMH', icon: Icons.speed_rounded),
+                  _StatItemCompact(label: 'VIAJES', value: '${settings.totalTrips}', icon: Icons.route_rounded),
+                  _StatItemCompact(label: 'TIEMPO', value: '${settings.totalDriveTime.inHours}H', icon: Icons.timer_rounded),
                 ],
               ),
-            );
-          },
+              const SizedBox(height: 30),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    final text = '¡Mira mi nivel en DashCore! Soy ${settings.driverLevel} con ${settings.totalDistance.toStringAsFixed(1)} KM recorridos. #DashCore #OBD2';
+                    Share.share(text);
+                  },
+                  icon: const Icon(Icons.share_rounded, size: 18),
+                  label: const Text('COMPARTIR PERFIL', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00E5FF),
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
-  final String label, value;
-  final IconData icon;
-  const _StatCard({required this.label, required this.value, required this.icon});
+class _GlowSwitch extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final Color activeColor;
+
+  const _GlowSwitch({
+    required this.value,
+    required this.onChanged,
+    required this.activeColor,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white10),
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOutCubic,
+        width: 54,
+        height: 30,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          color: value ? activeColor.withOpacity(0.15) : Colors.black.withOpacity(0.6),
+          border: Border.all(
+            color: value ? activeColor.withOpacity(0.6) : Colors.white.withOpacity(0.08),
+            width: 1.5,
+          ),
+          boxShadow: value ? [
+            BoxShadow(
+              color: activeColor.withOpacity(0.3),
+              blurRadius: 12,
+              spreadRadius: 1,
+            )
+          ] : [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 4,
+            )
+          ],
+        ),
+        child: Stack(
+          alignment: Alignment.centerLeft,
+          children: [
+            // Background track hint
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeInOutCubic,
+              left: value ? 28 : 4,
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: value ? activeColor : Colors.white.withOpacity(0.1),
+                  boxShadow: value ? [
+                    BoxShadow(
+                      color: activeColor.withOpacity(0.8),
+                      blurRadius: 10,
+                    ),
+                    BoxShadow(
+                      color: Colors.white.withOpacity(0.4),
+                      blurRadius: 2,
+                      offset: const Offset(-1, -1),
+                    )
+                  ] : [],
+                ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: value
+                    ? const Icon(Icons.power_settings_new_rounded, size: 14, color: Colors.black)
+                    : const Icon(Icons.close_rounded, size: 12, color: Colors.white24),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    );
+  }
+}
+
+class _RepeatCircleButton extends StatelessWidget {
+  final String value;
+  final VoidCallback onTap;
+  final Color activeColor;
+  final bool isEnabled;
+
+  const _RepeatCircleButton({
+    required this.value,
+    required this.onTap,
+    required this.activeColor,
+    this.isEnabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap, // Permite clickear incluso si está "desactivado" para volver a activar
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: const Color(0xFF00E5FF), size: 30),
-          const SizedBox(height: 15),
-          Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-          const SizedBox(height: 5),
-          FittedBox(child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900))),
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 300),
+            style: TextStyle(
+              color: isEnabled ? Colors.white : Colors.white.withOpacity(0.2),
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Inter',
+            ),
+            child: Text(value),
+          ),
+          const SizedBox(width: 12),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 350),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isEnabled ? activeColor.withOpacity(0.12) : Colors.black.withOpacity(0.4),
+              border: Border.all(
+                color: isEnabled ? activeColor.withOpacity(0.4) : Colors.white.withOpacity(0.05),
+                width: 1.5,
+              ),
+              boxShadow: isEnabled ? [
+                BoxShadow(
+                  color: activeColor.withOpacity(0.2),
+                  blurRadius: 12,
+                )
+              ] : [],
+            ),
+            child: Icon(
+              Icons.repeat_rounded,
+              size: 14,
+              color: isEnabled ? activeColor : Colors.white.withOpacity(0.15),
+            ),
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _StatItemCompact extends StatelessWidget {
+  final String label, value;
+  final IconData icon;
+  const _StatItemCompact({required this.label, required this.value, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, color: const Color(0xFF00E5FF), size: 18),
+        const SizedBox(height: 6),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900)),
+        Text(label, style: const TextStyle(color: Colors.white24, fontSize: 7, fontWeight: FontWeight.bold)),
+      ],
     );
   }
 }
@@ -989,13 +1259,12 @@ class _SettingsSliderTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.timer_rounded,
+              Icon(
+                icon,
                 size: 16,
                 color: themeColor,
               ),
@@ -1005,8 +1274,7 @@ class _SettingsSliderTile extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
-                  color:
-                      Colors.white.withOpacity(0.3),
+                  color: Colors.white.withOpacity(0.3),
                   letterSpacing: 1.2,
                 ),
               ),
@@ -1078,17 +1346,45 @@ class _SettingsToggleTile extends StatelessWidget {
   final String label;
   final String value;
   final VoidCallback onTap;
+  final bool? isToggle;
 
   const _SettingsToggleTile({
     required this.icon,
     required this.label,
     required this.value,
     required this.onTap,
+    this.isToggle,
   });
 
   @override
   Widget build(BuildContext context) {
     const themeColor = Color(0xFF00E5FF);
+
+    final bool isActive =
+        value.contains('ACTIVADO') ||
+        value.contains('MODO GPS') ||
+        value.contains('MODO OBD2');
+
+    final bool effectiveIsToggle = isToggle ?? (
+        label.contains('SALUDO') ||
+        label.contains('MODO') ||
+        label.contains('AHORRO') ||
+        label.contains('ESPECIAL') ||
+        label.contains('ADVANCED') ||
+        label.contains('INDICADOR') ||
+        label.contains('ANALÍTICA')
+    );
+
+    final bool isMultiOption = !effectiveIsToggle && (
+        label.contains('DISEÑO') ||
+        label.contains('UNIDAD') ||
+        label.contains('IDIOMA') ||
+        label.contains('VEHÍCULO') ||
+        label.contains('SIMULADOR')
+    );
+
+    final Color currentAccent = (isActive || (isMultiOption && !value.contains('DESACTIVADO') && !value.contains('SIN SELECCIONAR')))
+        ? themeColor : Colors.white24;
 
     return Container(
       decoration: BoxDecoration(
@@ -1107,19 +1403,19 @@ class _SettingsToggleTile extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Container(
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color:
-                        themeColor.withOpacity(0.1),
-                    borderRadius:
-                        BorderRadius.circular(12),
+                    color: currentAccent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: currentAccent.withOpacity(0.2)),
                   ),
                   child: Icon(
                     icon,
                     size: 20,
-                    color: themeColor,
+                    color: currentAccent,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -1130,11 +1426,10 @@ class _SettingsToggleTile extends StatelessWidget {
                     children: [
                       Text(
                         label,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
-                          color: Colors.white
-                              .withOpacity(0.3),
+                          color: Colors.white38,
                           letterSpacing: 1.2,
                         ),
                       ),
@@ -1149,11 +1444,25 @@ class _SettingsToggleTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 14,
-                  color: Colors.white12,
-                ),
+                if (effectiveIsToggle)
+                  _GlowSwitch(
+                    value: isActive,
+                    onChanged: (_) => onTap(),
+                    activeColor: themeColor,
+                  )
+                else if (isMultiOption)
+                  _RepeatCircleButton(
+                    value: value,
+                    onTap: onTap,
+                    activeColor: themeColor,
+                    isEnabled: !value.contains('DESACTIVADO') && !value.contains('SIN SELECCIONAR'),
+                  )
+                else
+                  const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14,
+                    color: Colors.white12,
+                  ),
               ],
             ),
           ),

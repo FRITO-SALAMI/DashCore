@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/music_provider.dart';
+import '../../widgets/rpm_warning_animation.dart';
 import '../dashboard_background.dart';
 
 class GlowRedDashboard extends StatelessWidget {
@@ -56,22 +57,12 @@ class GlowRedDashboard extends StatelessWidget {
           ),
           
           // Top Header: Stats
-          Positioned(
+          const Positioned(
             top: 30,
             right: 60,
             child: Row(
-              children: [
-                _HeaderStat(label: 'MOTOR DATA', value: (rpm/1000).toStringAsFixed(1), unit: 'K-RPM', color: currentAccent),
-              ],
+              children: [],
             ),
-          ),
-
-          // Central Boost Meter
-          Positioned(
-            top: 70,
-            left: 0,
-            right: 0,
-            child: _BoostMeter(value: (rpm / 8000), color: currentAccent),
           ),
 
           // Main Gauges (Central 4-Circle Cluster - SEPARATED)
@@ -87,12 +78,15 @@ class GlowRedDashboard extends StatelessWidget {
                     child: AnimatedScale(
                       duration: const Duration(milliseconds: 200),
                       scale: isCompetitive ? 1.05 : 1.0,
-                      child: _GlowCircularGauge(
-                        value: rpm,
-                        maxValue: 8000,
-                        label: 'RPM',
-                        color: currentAccent,
-                        size: 300,
+                      child: RpmWarningAnimation(
+                        rpm: rpm,
+                        child: _GlowCircularGauge(
+                          value: rpm,
+                          maxValue: 8000,
+                          label: 'RPM',
+                          color: currentAccent,
+                          size: 300,
+                        ),
                       ),
                     ),
                   ),
@@ -107,25 +101,27 @@ class GlowRedDashboard extends StatelessWidget {
                     ),
                   ),
 
-                  // Inner Circles: Temp and Volt (Center-ish, but separated)
+                  // Inner Circles: Temp and Volt (Closer and lower)
                   Positioned(
-                    left: 240,
+                    left: 255,
+                    bottom: 110,
                     child: _GlowCircularGauge(
                       value: coolantTemp,
                       maxValue: 130,
                       label: 'TEMP',
-                      color: Colors.cyanAccent,
-                      size: 110,
+                      color: currentAccent,
+                      size: 90,
                     ),
                   ),
                   Positioned(
-                    right: 240,
+                    right: 255,
+                    bottom: 110,
                     child: _GlowCircularGauge(
                       value: voltage.toInt(),
                       maxValue: 16,
                       label: 'VOLT',
-                      color: Colors.orangeAccent,
-                      size: 110,
+                      color: currentAccent,
+                      size: 90,
                       isVolt: true,
                       voltValue: voltage,
                     ),
@@ -218,33 +214,6 @@ class _GlowMusicButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(),
       icon: Icon(icon, color: Colors.white),
-    );
-  }
-}
-
-class _HeaderStat extends StatelessWidget {
-  final String label;
-  final String value;
-  final String unit;
-  final Color color;
-
-  const _HeaderStat({required this.label, required this.value, required this.unit, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(label, style: TextStyle(color: color.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 2)),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(value, style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900)),
-            const SizedBox(width: 4),
-            Text(unit, style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ],
     );
   }
 }
@@ -350,83 +319,10 @@ class _GlowGaugePainter extends CustomPainter {
       ..strokeWidth = 4
       ..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCircle(center: center, radius: radius - 20), startAngle, sweepAngle * progress, false, solidPaint);
-
-    final needleAngle = startAngle + progress * sweepAngle;
-    final needlePaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round;
-
-    final needleEnd = Offset(center.dx + math.cos(needleAngle) * (radius - 15), center.dy + math.sin(needleAngle) * (radius - 15));
-    final needleStart = Offset(center.dx + math.cos(needleAngle) * (radius - 60), center.dy + math.sin(needleAngle) * (radius - 60));
-    canvas.drawLine(needleStart, needleEnd, needlePaint);
   }
 
   @override
   bool shouldRepaint(covariant _GlowGaugePainter oldDelegate) => true;
-}
-
-class _BoostMeter extends StatelessWidget {
-  final double value;
-  final Color color;
-  const _BoostMeter({required this.value, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          width: 400,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('MIN', style: TextStyle(color: color.withOpacity(0.5), fontSize: 12, fontWeight: FontWeight.bold)),
-              const Text(
-                'TURBO BOOST PRESSURE',
-                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 4),
-              ),
-              Text('MAX', style: TextStyle(color: color.withOpacity(0.5), fontSize: 12, fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: 400,
-          height: 40,
-          child: CustomPaint(
-            painter: _BoostPainter(progress: value, color: color),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _BoostPainter extends CustomPainter {
-  final double progress;
-  final Color color;
-  _BoostPainter({required this.progress, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..strokeCap = StrokeCap.round;
-    const tickCount = 41;
-    final spacing = size.width / (tickCount - 1);
-
-    for (int i = 0; i < tickCount; i++) {
-      final x = i * spacing;
-      final height = (i % 5 == 0) ? size.height : size.height * 0.5;
-      final active = (i / tickCount) <= progress;
-      paint.color = active ? color : Colors.white.withOpacity(0.1);
-      paint.strokeWidth = (i % 5 == 0) ? 3 : 1.5;
-
-      canvas.drawLine(Offset(x, (size.height - height) / 2), Offset(x, (size.height + height) / 2), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _BoostPainter oldDelegate) => true;
 }
 
 class _BackgroundPathPainter extends CustomPainter {

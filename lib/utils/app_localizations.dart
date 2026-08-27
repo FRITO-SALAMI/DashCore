@@ -51,6 +51,10 @@ class AppLocalizations {
       'add_car': 'Add Car',
       'garage': 'Garage',
       'double_tap_close': 'DOUBLE TAP TO CLOSE',
+      'edit': 'EDIT',
+      'new_sketch': 'NEW SKETCH',
+      'connecting': 'CONNECTING...',
+      'reconnecting': 'RECONNECTING...',
     },
     Language.spanish: {
       'connection': 'Conexión',
@@ -90,6 +94,10 @@ class AppLocalizations {
       'add_car': 'Añadir Auto',
       'garage': 'Garaje',
       'double_tap_close': 'DOBLE TOQUE PARA CERRAR',
+      'edit': 'EDITAR',
+      'new_sketch': 'NUEVO BOCETO',
+      'connecting': 'CONECTANDO...',
+      'reconnecting': 'RECONECTANDO...',
     },
   };
 

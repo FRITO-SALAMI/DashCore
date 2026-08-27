@@ -28,37 +28,43 @@ class CustomGaugeWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget child;
+    final bool hasImage = logoPath != null && logoPath!.isNotEmpty;
 
     if (type == 'music_hub') {
       child = _MusicHub(size: size, color: color);
+    } else if (type == 'box') {
+      child = _BoxGauge(logoPath: logoPath, size: size);
     } else {
       switch (design) {
-        case 1: child = _ModernDesign(value: value, unit: unit, color: color, size: size); break;
+        case 1: child = _ModernDesign(value: value, unit: unit, color: color, size: size, hasImage: hasImage); break;
         case 2: child = _MinimalDesign(value: value, unit: unit, color: color, size: size); break;
-        case 3: child = _RetroDesign(value: value, unit: unit, color: color, size: size); break;
+        case 3: child = _RetroDesign(value: value, unit: unit, color: color, size: size, hasImage: hasImage); break;
         case 0:
-        default: child = _DefaultDesign(value: value, unit: unit, color: color, size: size); break;
+        default: child = _DefaultDesign(value: value, unit: unit, color: color, size: size, hasImage: hasImage); break;
       }
     }
 
-    if (logoPath != null && logoPath!.isNotEmpty) {
-      return Stack(
-        children: [
-          child,
-          Positioned(
-            top: 5, right: 5,
-            child: Opacity(
-              opacity: 0.8,
-              child: Image.file(
-                File(logoPath!),
-                width: size.width * 0.25,
-                height: size.width * 0.25,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-              ),
+    if (hasImage && type != 'box') {
+      return Container(
+        width: size.width,
+        height: size.height,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [BoxShadow(color: color.withOpacity(0.2), blurRadius: 15)],
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: logoPath!.endsWith('.gif') || logoPath!.startsWith('assets/')
+                ? Image.asset(logoPath!, fit: BoxFit.cover)
+                : Image.file(File(logoPath!), fit: BoxFit.cover),
             ),
-          ),
-        ],
+            Container(color: Colors.black.withOpacity(0.3)), // Darken image slightly
+            child,
+          ],
+        ),
       );
     }
 
@@ -71,7 +77,8 @@ class _DefaultDesign extends StatelessWidget {
   final String unit;
   final Color color;
   final Size size;
-  const _DefaultDesign({required this.value, required this.unit, required this.color, required this.size});
+  final bool hasImage;
+  const _DefaultDesign({required this.value, required this.unit, required this.color, required this.size, this.hasImage = false});
 
   @override
   Widget build(BuildContext context) {
@@ -79,10 +86,9 @@ class _DefaultDesign extends StatelessWidget {
       width: size.width, height: size.height,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.8),
+        color: hasImage ? Colors.transparent : Colors.black.withOpacity(0.8),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: color.withOpacity(0.4), width: 2),
-        boxShadow: [BoxShadow(color: color.withOpacity(0.2), blurRadius: 15)],
+        border: hasImage ? null : Border.all(color: color.withOpacity(0.4), width: 2),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -90,12 +96,12 @@ class _DefaultDesign extends StatelessWidget {
           FittedBox(
             child: Text(
               value.toString(),
-              style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, fontFamily: 'Inter'),
+              style: const TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.w900, fontFamily: 'Inter'),
             ),
           ),
           Text(
             unit,
-            style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 2),
+            style: TextStyle(color: hasImage ? Colors.white : color, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 2),
           ),
         ],
       ),
@@ -108,26 +114,27 @@ class _ModernDesign extends StatelessWidget {
   final String unit;
   final Color color;
   final Size size;
-  const _ModernDesign({required this.value, required this.unit, required this.color, required this.size});
+  final bool hasImage;
+  const _ModernDesign({required this.value, required this.unit, required this.color, required this.size, this.hasImage = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: size.width, height: size.height,
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1D23).withOpacity(0.9),
+        color: hasImage ? Colors.transparent : const Color(0xFF1A1D23).withOpacity(0.9),
         borderRadius: const BorderRadius.only(topRight: Radius.circular(20), bottomLeft: Radius.circular(20)),
-        border: Border.all(color: color.withOpacity(0.5)),
+        border: hasImage ? null : Border.all(color: color.withOpacity(0.5)),
       ),
       child: Row(
         children: [
-          Container(width: 6, decoration: BoxDecoration(color: color, borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(20)))),
+          if (!hasImage) Container(width: 6, decoration: BoxDecoration(color: color, borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(20)))),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(unit, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
-                FittedBox(child: Text(value.toString(), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w100))),
+                Text(unit, style: TextStyle(color: hasImage ? Colors.white : color, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                FittedBox(child: Text(value.toString(), style: const TextStyle(color: Colors.white, fontSize: 38, fontWeight: FontWeight.w100))),
               ],
             ),
           ),
@@ -151,7 +158,7 @@ class _MinimalDesign extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          FittedBox(child: Text(value.toString(), style: TextStyle(color: color, fontSize: 40, fontWeight: FontWeight.w900, height: 1.0))),
+          FittedBox(child: Text(value.toString(), style: TextStyle(color: color, fontSize: 44, fontWeight: FontWeight.w900, height: 1.0))),
           Text(unit, style: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
         ],
       ),
@@ -164,24 +171,25 @@ class _RetroDesign extends StatelessWidget {
   final String unit;
   final Color color;
   final Size size;
-  const _RetroDesign({required this.value, required this.unit, required this.color, required this.size});
+  final bool hasImage;
+  const _RetroDesign({required this.value, required this.unit, required this.color, required this.size, this.hasImage = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: size.width, height: size.height,
       decoration: BoxDecoration(
-        color: const Color(0xFF121212),
-        border: Border.all(color: color, width: 1),
+        color: hasImage ? Colors.transparent : const Color(0xFF121212),
+        border: hasImage ? null : Border.all(color: color, width: 1),
       ),
       padding: const EdgeInsets.all(4),
       child: Container(
-        decoration: BoxDecoration(border: Border.all(color: color.withOpacity(0.3))),
+        decoration: hasImage ? null : BoxDecoration(border: Border.all(color: color.withOpacity(0.3))),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            FittedBox(child: Text(value.toString(), style: TextStyle(color: color, fontSize: 30, fontFamily: 'monospace', fontWeight: FontWeight.bold))),
-            Text(unit, style: TextStyle(color: color, fontSize: 8, fontFamily: 'monospace')),
+            FittedBox(child: Text(value.toString(), style: TextStyle(color: hasImage ? Colors.white : color, fontSize: 32, fontFamily: 'monospace', fontWeight: FontWeight.bold))),
+            Text(unit, style: TextStyle(color: hasImage ? Colors.white : color, fontSize: 8, fontFamily: 'monospace')),
           ],
         ),
       ),
@@ -333,6 +341,33 @@ class _MusicButton extends StatelessWidget {
           size: isMain ? 28 : 20,
         ),
       ),
+    );
+  }
+}
+
+class _BoxGauge extends StatelessWidget {
+  final String? logoPath;
+  final Size size;
+  const _BoxGauge({this.logoPath, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size.width,
+      height: size.height,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: logoPath != null && logoPath!.isNotEmpty
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: logoPath!.endsWith('.gif') || logoPath!.startsWith('assets/')
+                  ? Image.asset(logoPath!, fit: BoxFit.cover)
+                  : Image.file(File(logoPath!), fit: BoxFit.cover),
+            )
+          : const Center(child: Icon(Icons.add_photo_alternate_rounded, color: Colors.white24)),
     );
   }
 }

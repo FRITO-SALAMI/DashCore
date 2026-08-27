@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../widgets/rpm_warning_animation.dart';
 
 class HellishRedDashboard extends StatelessWidget {
   final int speed;
@@ -35,8 +36,11 @@ class HellishRedDashboard extends StatelessWidget {
         children: [
           // Hellish RPM Gauge (Background)
           Positioned.fill(
-            child: CustomPaint(
-              painter: _HellishRpmPainter(rpm: rpm),
+            child: RpmWarningAnimation(
+              rpm: rpm,
+              child: CustomPaint(
+                painter: _HellishRpmPainter(rpm: rpm),
+              ),
             ),
           ),
 

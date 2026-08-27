@@ -24,7 +24,7 @@ class _StoreScreenState extends State<StoreScreen> {
       case DashboardStyle.modern:
         imagePath = 'assets/images/preview_store/modern.png';
         break;
-      case DashboardStyle.purplePuff:
+      case DashboardStyle.purpleMaps:
         imagePath = 'assets/images/preview_store/purplemap.png';
         break;
       case DashboardStyle.glowRed:
@@ -48,14 +48,23 @@ class _StoreScreenState extends State<StoreScreen> {
       case DashboardStyle.evCluster:
         imagePath = 'assets/images/preview_store/evcluster.png';
         break;
+      case DashboardStyle.neonWorld:
+        imagePath = 'assets/images/preview_store/neonword.png';
+        break;
+      case DashboardStyle.dashcore:
+        imagePath = 'assets/images/preview_store/Dashcorepro.png';
+        break;
+      case DashboardStyle.vehicle3D:
+        imagePath = 'assets/images/preview_store/vehicle3d.jpeg';
+        break;
       case DashboardStyle.teslaRoad:
-        imagePath = 'assets/images/preview_store/sporty.png'; // Placeholder or new
+        imagePath = 'assets/images/preview_store/sporty.png';
         break;
       case DashboardStyle.teslaModel:
-        imagePath = 'assets/images/preview_store/modern.png'; // Placeholder or new
+        imagePath = 'assets/images/preview_store/modern.png';
         break;
       default:
-        return const Center(child: Icon(Icons.dashboard, color: Colors.white24, size: 40));
+        imagePath = 'assets/images/preview_store/defualtpreview.jpeg';
     }
 
     return Image.asset(
@@ -73,18 +82,30 @@ class _StoreScreenState extends State<StoreScreen> {
     const themeColor = Color(0xFF00E5FF);
 
     final availableStyles = [
-      {'style': DashboardStyle.racing, 'title': 'RACING PRO', 'desc': 'High performance', 'cat': 'PREMIUM'},
+      {'style': DashboardStyle.racing, 'title': 'RACING PRO', 'desc': 'High performance', 'cat': 'GRATIS'},
       {'style': DashboardStyle.modern, 'title': 'MODERN EV', 'desc': 'Sleek design', 'cat': 'GRATIS'},
-      {'style': DashboardStyle.vehicle3D, 'title': 'VEHICLE 3D', 'desc': 'Interactive model', 'cat': 'RECIENTE'},
-      {'style': DashboardStyle.purplePuff, 'title': 'PURPLE MAP', 'desc': 'Nav & Music', 'cat': 'GRATIS'},
-      {'style': DashboardStyle.racingHud, 'title': 'RACING HUD', 'desc': 'HUD Design', 'cat': 'PREMIUM'},
-      {'style': DashboardStyle.glowRed, 'title': 'GLOW RED', 'desc': 'Aggressive glow', 'cat': 'RECIENTE'},
-      {'style': DashboardStyle.hellishRed, 'title': 'HELLISH RED', 'desc': 'Hellish theme', 'cat': 'GIF'},
-      {'style': DashboardStyle.teslaStyle, 'title': 'TESLA STYLE', 'desc': 'Cluster', 'cat': 'PREMIUM'},
+      {'style': DashboardStyle.vehicle3D, 'title': 'VEHICLE 3D', 'desc': 'Interactive model', 'cat': 'GRATIS'},
+      {'style': DashboardStyle.purpleMaps, 'title': 'PURPLE MAPS', 'desc': 'Nav & Music', 'cat': 'GRATIS'},
+      {'style': DashboardStyle.racingHud, 'title': 'RACING HUD', 'desc': 'HUD Design', 'cat': 'GRATIS'},
+      {'style': DashboardStyle.glowRed, 'title': 'GLOW RED', 'desc': 'Aggressive glow', 'cat': 'GRATIS'},
+      {'style': DashboardStyle.hellishRed, 'title': 'HELLISH RED', 'desc': 'Hellish theme', 'cat': 'GRATIS'},
+      {'style': DashboardStyle.teslaStyle, 'title': 'TESLA STYLE', 'desc': 'Cluster', 'cat': 'GRATIS'},
       {'style': DashboardStyle.classicSport, 'title': 'CLASSIC SPORT', 'desc': 'Mercedes style', 'cat': 'GRATIS'},
-      {'style': DashboardStyle.raceCluster, 'title': 'RACE CLUSTER', 'desc': 'Race data', 'cat': 'PREMIUM'},
+      {'style': DashboardStyle.raceCluster, 'title': 'RACE CLUSTER', 'desc': 'Race data', 'cat': 'GRATIS'},
       {'style': DashboardStyle.retroLcd, 'title': 'RETRO LCD', 'desc': '90s style', 'cat': 'GRATIS'},
-      {'style': DashboardStyle.evCluster, 'title': 'EV CLUSTER', 'desc': 'EV dash', 'cat': 'RECIENTE'},
+      {'style': DashboardStyle.evCluster, 'title': 'EV CLUSTER', 'desc': 'EV dash', 'cat': 'GRATIS'},
+      {'style': DashboardStyle.dashcore, 'title': 'DASHCORE PRO', 'desc': 'Editable Gadgets', 'cat': 'PREMIUM'},
+      {'style': DashboardStyle.neonWorld, 'title': 'NEON WORLD', 'desc': 'Global Map Premium', 'cat': 'PREMIUM'},
+    ];
+
+    final availableGifs = [
+      {'title': 'GTR DRIFT', 'path': 'assets/images/gifstore/Gtrdm.gif'},
+      {'title': 'ROT FIT', 'path': 'assets/images/gifstore/RotFIT.gif'},
+      {'title': 'KIA LOGO', 'path': 'assets/images/gifstore/logokia.gif'},
+      {'title': 'AVENTADOR', 'path': 'assets/images/gifstore/aventador.gif'},
+      {'title': 'NISSAN GTR', 'path': 'assets/images/gifstore/NissanGTR.gif'},
+      {'title': 'HYUNDAI', 'path': 'assets/images/gifstore/logohyuinda.gif'},
+      {'title': 'SKYLINE', 'path': 'assets/images/gifstore/tenorNissanSkyline.gif'},
     ];
 
     final filteredStyles = availableStyles.where((s) => s['cat'] == _selectedCategory).toList();
@@ -125,7 +146,68 @@ class _StoreScreenState extends State<StoreScreen> {
                   ),
                   const SizedBox(height: 30),
                   Expanded(
-                    child: GridView.builder(
+                    child: _selectedCategory == 'GIF'
+                      ? GridView.builder(
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            mainAxisSpacing: 16,
+                            crossAxisSpacing: 16,
+                            childAspectRatio: 1.2,
+                          ),
+                          itemCount: availableGifs.length,
+                          itemBuilder: (context, index) {
+                            final gif = availableGifs[index];
+                            final isSelected = settings.backgroundImage == gif['path'];
+
+                            return GestureDetector(
+                              onTap: () {
+                                settings.setBackgroundImage(gif['path'] as String, isAsset: true);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('GIF ${gif['title']} APLICADO'), duration: const Duration(seconds: 1))
+                                );
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.03),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isSelected ? themeColor : Colors.white10,
+                                    width: isSelected ? 2 : 1,
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(15),
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      Image.asset(gif['path'] as String, fit: BoxFit.cover),
+                                      Container(color: Colors.black.withOpacity(0.4)),
+                                      Center(
+                                        child: Text(
+                                          gif['title'] as String,
+                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      : filteredStyles.isEmpty 
+                      ? const Center(
+                          child: Text(
+                            'COMMING SOON', 
+                            style: TextStyle(
+                              color: Colors.white24, 
+                              fontSize: 32, 
+                              fontWeight: FontWeight.w900, 
+                              letterSpacing: 10
+                            )
+                          ),
+                        )
+                      : GridView.builder(
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 3, // 3 per row
                         mainAxisSpacing: 16,

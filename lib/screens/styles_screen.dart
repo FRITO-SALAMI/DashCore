@@ -4,15 +4,42 @@ import 'package:image_picker/image_picker.dart';
 import '../providers/dash_settings_provider.dart';
 import '../utils/app_localizations.dart';
 
-class StylesScreen extends StatelessWidget {
+class StylesScreen extends StatefulWidget {
   final VoidCallback onBack;
 
   const StylesScreen({super.key, required this.onBack});
 
+  @override
+  State<StylesScreen> createState() => _StylesScreenState();
+}
+
+class _StylesScreenState extends State<StylesScreen> {
   Future<void> _pickBackground(BuildContext context, DashSettingsProvider settings) async {
     final picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
     if (image != null) settings.setBackgroundImage(image.path, isAsset: false);
+  }
+
+  Widget _buildStylePreview(DashboardStyle style) {
+    String imagePath = '';
+    switch (style) {
+      case DashboardStyle.racing: imagePath = 'assets/images/preview_store/sporty.png'; break;
+      case DashboardStyle.modern: imagePath = 'assets/images/preview_store/modern.png'; break;
+      case DashboardStyle.purpleMaps: imagePath = 'assets/images/preview_store/purplemap.png'; break;
+      case DashboardStyle.glowRed: imagePath = 'assets/images/preview_store/glowred.jpg'; break;
+      case DashboardStyle.hellishRed: imagePath = 'assets/images/preview_store/hellish.png'; break;
+      case DashboardStyle.racingHud: imagePath = 'assets/images/preview_store/racinghub.png'; break;
+      case DashboardStyle.teslaStyle: imagePath = 'assets/images/preview_store/teslastyle.png'; break;
+      case DashboardStyle.classicSport: imagePath = 'assets/images/preview_store/classicsport.png'; break;
+      case DashboardStyle.retroLcd: imagePath = 'assets/images/preview_store/retrolcd.png'; break;
+      case DashboardStyle.evCluster: imagePath = 'assets/images/preview_store/evcluster.png'; break;
+      case DashboardStyle.neonWorld: imagePath = 'assets/images/preview_store/neonword.png'; break;
+      case DashboardStyle.vehicle3D: imagePath = 'assets/images/preview_store/vehicle3d.jpeg'; break;
+      case DashboardStyle.teslaRoad: imagePath = 'assets/images/preview_store/sporty.png'; break;
+      case DashboardStyle.teslaModel: imagePath = 'assets/images/preview_store/modern.png'; break;
+      default: imagePath = 'assets/images/preview_store/defualtpreview.jpeg';
+    }
+    return Image.asset(imagePath, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.dashboard, color: Colors.white24));
   }
 
   @override
@@ -29,9 +56,11 @@ class StylesScreen extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 15, 20, 10),
               child: Row(
                 children: [
-                  IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20), onPressed: onBack),
+                  IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20), onPressed: widget.onBack),
                   const SizedBox(width: 8),
                   Text(loc.translate('styles').toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 2)),
+                  const Spacer(),
+                  IconButton(icon: const Icon(Icons.close, color: Colors.white, size: 20), onPressed: widget.onBack),
                 ],
               ),
             ),
@@ -51,14 +80,15 @@ class StylesScreen extends StatelessWidget {
                             title: 'SPORTY',
                             style: DashboardStyle.sporty,
                             isSelected: settings.selectedStyle == DashboardStyle.sporty,
+                            preview: _buildStylePreview(DashboardStyle.sporty),
                             onTap: () {
                               settings.setStyle(DashboardStyle.sporty);
-                              onBack();
+                              widget.onBack();
                             },
                           ),
                           ...settings.downloadedStyles.where((s) => s != DashboardStyle.sporty).map((style) {
                             String title = style.name.toUpperCase();
-                            if (style == DashboardStyle.purplePuff) title = 'PURPLE MAP';
+                            if (style == DashboardStyle.purpleMaps) title = 'PURPLE MAPS';
                             if (style == DashboardStyle.vehicle3D) title = 'VEHICLE 3D';
                             if (style == DashboardStyle.racingHud) title = 'RACING HUD';
                             if (style == DashboardStyle.glowRed) title = 'GLOW RED';
@@ -66,16 +96,26 @@ class StylesScreen extends StatelessWidget {
                             if (style == DashboardStyle.teslaStyle) title = 'TESLA STYLE';
                             if (style == DashboardStyle.classicSport) title = 'CLASSIC SPORT';
                             if (style == DashboardStyle.raceCluster) title = 'RACE CLUSTER';
-                            
+                            if (style == DashboardStyle.neonWorld) title = 'NEON WORLD';
+                            if (style == DashboardStyle.myStyle) title = 'MI ESTILO';
+
                             return Padding(
                               padding: const EdgeInsets.only(left: 12),
                               child: _CompactStyleCard(
                                 title: title,
                                 style: style,
                                 isSelected: settings.selectedStyle == style,
+                                preview: _buildStylePreview(style),
                                 onTap: () {
-                                  settings.setStyle(style);
-                                  onBack();
+                                  if (settings.selectedStyle == style) {
+                                    settings.removeDownloadedStyle(style);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('ESTILO DESINSTALADO'), duration: Duration(seconds: 1))
+                                    );
+                                  } else {
+                                    settings.setStyle(style);
+                                    widget.onBack();
+                                  }
                                 },
                               ),
                             );
@@ -117,7 +157,8 @@ class StylesScreen extends StatelessWidget {
                               const SizedBox(width: 8),
                               _ActionBoxCompact(
                                 label: 'VEHICLE',
-                                isSelected: settings.backgroundImage == settings.selectedVehicle?.backgroundImage,
+                                isSelected: settings.backgroundImage == settings.selectedVehicle?.backgroundImage ||
+                                           settings.backgroundImage == settings.selectedVehicle?.backgroundUrl,
                                 onTap: () {
                                   if (settings.selectedVehicle != null) {
                                     settings.setBackgroundImage(settings.selectedVehicle!.backgroundImage);
@@ -127,6 +168,8 @@ class StylesScreen extends StatelessWidget {
                             ],
                           ),
                         ),
+                        const SizedBox(height: 20),
+                        // GIFs section removed as per user request
                       ],
                     ),
                   ],
@@ -144,24 +187,9 @@ class _CompactStyleCard extends StatelessWidget {
   final String title;
   final DashboardStyle style;
   final bool isSelected;
+  final Widget preview;
   final VoidCallback onTap;
-  const _CompactStyleCard({required this.title, required this.style, required this.isSelected, required this.onTap});
-
-  IconData _getIconForStyle(DashboardStyle style) {
-    switch (style) {
-      case DashboardStyle.racing: return Icons.speed;
-      case DashboardStyle.modern: return Icons.electric_car;
-      case DashboardStyle.vehicle3D: return Icons.view_in_ar;
-      case DashboardStyle.purplePuff: return Icons.map_rounded;
-      case DashboardStyle.racingHud: return Icons.radar_rounded;
-      case DashboardStyle.glowRed: return Icons.brightness_auto;
-      case DashboardStyle.hellishRed: return Icons.whatshot;
-      case DashboardStyle.teslaStyle: return Icons.tablet_android;
-      case DashboardStyle.classicSport: return Icons.settings_input_component;
-      case DashboardStyle.raceCluster: return Icons.sports_motorsports;
-      default: return Icons.dashboard;
-    }
-  }
+  const _CompactStyleCard({required this.title, required this.style, required this.isSelected, required this.preview, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -169,19 +197,44 @@ class _CompactStyleCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 80, width: 110,
+        height: 100, width: 140, // Increased size for preview
         decoration: BoxDecoration(
           color: isSelected ? activeColor.withOpacity(0.1) : Colors.white.withOpacity(0.03),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: isSelected ? activeColor : Colors.white10, width: 1.5),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(_getIconForStyle(style), size: 22, color: isSelected ? activeColor : Colors.white24),
-            const SizedBox(height: 6),
-            Text(title, style: TextStyle(color: isSelected ? Colors.white : Colors.white38, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1)),
-          ],
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              preview,
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: TextStyle(color: isSelected ? Colors.white : Colors.white38, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                  ],
+                ),
+              ),
+              if (isSelected)
+                const Positioned(
+                  top: 8, right: 8,
+                  child: Icon(Icons.check_circle_rounded, color: activeColor, size: 16),
+                ),
+            ],
+          ),
         ),
       ),
     );

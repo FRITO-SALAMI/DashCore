@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import '../../../models/obd_data.dart';
+import '../../../widget/dashboard_background.dart';
 
 class TeslaStyleThemeScreen extends StatelessWidget {
   const TeslaStyleThemeScreen({
@@ -21,6 +22,8 @@ class TeslaStyleThemeScreen extends StatelessWidget {
     this.onPrev,
     this.onNext,
     this.fuelLevel = 0,
+    this.backgroundImage,
+    this.isAssetBackground = true,
   });
 
   final ObdData data;
@@ -42,6 +45,9 @@ class TeslaStyleThemeScreen extends StatelessWidget {
   final VoidCallback? onPrev;
   final VoidCallback? onNext;
 
+  final String? backgroundImage;
+  final bool isAssetBackground;
+
   static const _bg = Color(0xFF0A0B0D);
   static const _panel = Color(0xFF121417);
   static const _line = Color(0xFF23262B);
@@ -58,75 +64,83 @@ class TeslaStyleThemeScreen extends StatelessWidget {
       duration: const Duration(milliseconds: 300),
       color: isCompetitive ? Colors.red.withOpacity(0.05) : _bg,
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
-      child: SafeArea(
-        child: Column(
-          children: [
-            _StatusBar(
-              ambientTempC: ambientTempC,
-              coolantTempC: data.engineTemp.toDouble(),
-              batteryVoltage: data.voltage,
-              accentColor: accentColor,
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    flex: 4,
-                    child: Transform.scale(
-                      scale: scale,
-                      alignment: Alignment.centerLeft,
-                      child: _SpeedPanel(
-                        speedKmh: data.speed.toDouble(),
-                        rpm: data.rpm,
-                        maxSpeedKmh: maxSpeedKmh,
-                        coolantTempC: data.engineTemp.toDouble(),
-                        batteryVoltage: data.voltage,
-                        accentColor: accentColor,
+      child: Stack(
+        children: [
+          DashboardBackground(
+            backgroundImage: backgroundImage,
+            isAssetBackground: isAssetBackground,
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                _StatusBar(
+                  ambientTempC: ambientTempC,
+                  coolantTempC: data.engineTemp.toDouble(),
+                  batteryVoltage: data.voltage,
+                  accentColor: accentColor,
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        flex: 4,
+                        child: Transform.scale(
+                          scale: scale,
+                          alignment: Alignment.centerLeft,
+                          child: _SpeedPanel(
+                            speedKmh: data.speed.toDouble(),
+                            rpm: data.rpm,
+                            maxSpeedKmh: maxSpeedKmh,
+                            coolantTempC: data.engineTemp.toDouble(),
+                            batteryVoltage: data.voltage,
+                            accentColor: accentColor,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 4,
-                    child: _VehiclePanel(
-                      modelPath: modelPath,
-                      gear: data.gear,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 4,
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: _AppsHub(
-                            slotCount: appSlotCount,
-                            onAppTap: onAppTap,
-                            slotBuilder: appSlotBuilder,
-                          ),
+                      Expanded(
+                        flex: 4,
+                        child: _VehiclePanel(
+                          modelPath: modelPath,
+                          gear: data.gear,
                         ),
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          height: 140, // Increased slightly for better fit
-                          child: _MusicHub(
-                            trackTitle: trackTitle,
-                            artistName: artistName,
-                            isPlaying: isPlaying,
-                            progress: progress,
-                            onPlayPause: onPlayPause,
-                            onPrev: onPrev,
-                            onNext: onNext,
-                          ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 4,
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: _AppsHub(
+                                slotCount: appSlotCount,
+                                onAppTap: onAppTap,
+                                slotBuilder: appSlotBuilder,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              height: 140, // Increased slightly for better fit
+                              child: _MusicHub(
+                                trackTitle: trackTitle,
+                                artistName: artistName,
+                                isPlaying: isPlaying,
+                                progress: progress,
+                                onPlayPause: onPlayPause,
+                                onPrev: onPrev,
+                                onNext: onNext,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -365,22 +379,22 @@ class _VehiclePanel extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          Positioned.fill(
-            child: ModelViewer(
-              key: ValueKey(modelPath),
-              backgroundColor: Colors.transparent,
-              src: modelPath,
-              alt: "Vehicle 3D Model",
-              autoRotate: true,
-              cameraControls: false,
-              disableZoom: true,
-              disablePan: true,
-              cameraOrbit: '180deg 75deg 5m',
-              loading: Loading.eager,
-              exposure: 1.0,
-              shadowIntensity: 0.5,
-            ),
-          ),
+              Positioned.fill(
+                child: ModelViewer(
+                  key: ValueKey(modelPath),
+                  backgroundColor: Colors.transparent,
+                  src: modelPath,
+                  alt: "Vehicle 3D Model",
+                  autoRotate: false,
+                  cameraControls: false,
+                  disableZoom: true,
+                  disablePan: true,
+                  cameraOrbit: '180deg 60deg 5m', // Aerial 360 view
+                  loading: Loading.lazy,
+                  exposure: 1.0,
+                  shadowIntensity: 0.1, // Minimal for 32bit
+                ),
+              ),
           if (gear != null && gear!.isNotEmpty)
             Positioned(
               right: 14,

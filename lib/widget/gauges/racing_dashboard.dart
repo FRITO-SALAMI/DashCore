@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/rpm_warning_animation.dart';
 import '../dashboard_background.dart';
 
 class RacingDashboard extends StatelessWidget {
@@ -49,7 +50,10 @@ class RacingDashboard extends StatelessWidget {
           Column(
             children: [
               // TOP: CIVIC TYPE-R STYLE RPM BAR
-              _CivicTypeRRpmBar(rpm: rpm, color: currentAccent),
+              RpmWarningAnimation(
+                rpm: rpm,
+                child: _CivicTypeRRpmBar(rpm: rpm, color: currentAccent),
+              ),
 
               Expanded(
                 child: Row(
@@ -220,7 +224,7 @@ class _RacingSpeedCenter extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'KILOMETERS PER HOUR',
+            'KM/H',
             style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 8),
           ),
         ],

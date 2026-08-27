@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/obd_data.dart';
 import '../services/obd_connection.dart';
 import '../services/demo_data_generator.dart';
+import '../services/analytics_service.dart';
+import '../services/bluetooth_obd_connection.dart';
 
 enum ObdConnectionState { disconnected, initializing, ready, error }
 
@@ -22,6 +24,7 @@ class ObdProvider extends ChangeNotifier {
 
   StreamSubscription<String>? _rxSubscription;
   StreamSubscription<Position>? _gpsSubscription;
+  Position? _lastPosition;
 
   Completer<String>? _commandCompleter;
   final StringBuffer _commandBuffer = StringBuffer();
@@ -50,6 +53,8 @@ class ObdProvider extends ChangeNotifier {
   bool _isGpsMode = false;
   bool get isGpsMode => _isGpsMode;
 
+  Function(double speed, double distanceDelta)? onStatsUpdate;
+
   String _initMessage = "DASHBOARD";
   String get initMessage => _initMessage;
 
@@ -67,6 +72,59 @@ class ObdProvider extends ChangeNotifier {
     _connection = currentConnection;
     _listen();
     _checkAutoStart();
+    _initGlobalGpsTracking();
+  }
+
+  Future<void> _initGlobalGpsTracking() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    
+    if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+      Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.bestForNavigation,
+          distanceFilter: 0,
+        ),
+      ).listen((Position position) {
+        if (_isDemoMode) return;
+
+        double distanceDelta = 0;
+        if (_lastPosition != null) {
+          distanceDelta = Geolocator.distanceBetween(
+            _lastPosition!.latitude, _lastPosition!.longitude,
+            position.latitude, position.longitude
+          ) / 1000;
+        }
+        _lastPosition = position;
+
+        final kmh = (position.speed * 3.6).round();
+
+        // Update global stats via callback
+        if (onStatsUpdate != null && distanceDelta > 0) {
+          onStatsUpdate!(kmh.toDouble(), distanceDelta);
+        }
+
+        // If in GPS mode, update local data as well
+        if (_isGpsMode) {
+          int simulatedRpm = 800 + (kmh * 30); // Slightly more aggressive RPM feel
+          if (kmh > 0) simulatedRpm += 500;
+          if (simulatedRpm > 7000) simulatedRpm = 7000;
+
+          _data = _data.copyWith(
+            speed: kmh,
+            rpm: simulatedRpm,
+            engineTemp: 92,
+            voltage: 14.4,
+            fuelLevel: _data.fuelLevel > 0 ? _data.fuelLevel : 75,
+            odometer: _data.odometer + (distanceDelta * 10).round(), 
+            gear: kmh > 5 ? 'D' : (kmh > 0 ? 'L' : 'P'),
+          );
+          notifyListeners();
+        }
+      });
+    }
   }
 
   Future<void> _checkAutoStart() async {
@@ -116,6 +174,40 @@ class ObdProvider extends ChangeNotifier {
   void setPowerSavingMode(bool value) {
     _isPowerSavingMode = value;
     notifyListeners();
+  }
+
+  Future<void> saveConnectionState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('last_was_real_mode', _isRealMode);
+    await prefs.setBool('last_was_gps_mode', _isGpsMode);
+  }
+
+  Future<void> handleAppResume() async {
+    developer.log('🚀 App Resumed: Checking connection health...', name: 'ObdProvider');
+    
+    if (_isRealMode) {
+      if (!_connection.isConnected || state == ObdConnectionState.error) {
+        developer.log('⚠️ Real mode was active but connection is dead. Recovering...', name: 'ObdProvider');
+        _recoverEcuConnection();
+      } else {
+        // Pulse check: send a simple command to see if hardware is still responding
+        try {
+          String res = await _sendAndWait("AT").timeout(const Duration(milliseconds: 500));
+          if (res.isEmpty) {
+             developer.log('⚠️ Hardware not responding. Recovering...', name: 'ObdProvider');
+             _recoverEcuConnection();
+          }
+        } catch (_) {
+           _recoverEcuConnection();
+        }
+      }
+    } else if (_isGpsMode) {
+      // Geolocator stream should ideally resume automatically, 
+      // but let's ensure it's active.
+      if (_gpsSubscription == null) {
+        toggleGpsMode();
+      }
+    }
   }
 
   Future<void> _recoverEcuConnection() async {
@@ -208,6 +300,22 @@ class ObdProvider extends ChangeNotifier {
       _isRealMode = true;
       await prefs.setBool('last_was_real_mode', true);
       state = ObdConnectionState.ready;
+
+      // Registrar evento de conexión
+      String? deviceName;
+      String? deviceAddress;
+      if (currentConnection is BluetoothObdConnection) {
+        final device = (currentConnection as BluetoothObdConnection).provider.connectedDevice;
+        deviceName = device?.name;
+        deviceAddress = device?.address;
+      }
+
+      AnalyticsService.instance.logEvent('vehicle_connected', data: {
+        'device_name': deviceName,
+        'device_address': deviceAddress, // Se envía si hay consentimiento (check en AnalyticsService)
+        'mode': 'obd2',
+      });
+
       _startPollingLoop();
     } else {
       state = ObdConnectionState.error;
@@ -245,9 +353,7 @@ class ObdProvider extends ChangeNotifier {
       }
       if (_isRealMode) {
         int delay = 500;
-        if (_isPowerSavingMode) {
-          delay = 1000;
-        } else if (_isAdvancedMode) {
+        if (_isAdvancedMode) {
           delay = 20;
         } else if (_isPerformanceMode) {
           delay = 100;
@@ -287,36 +393,13 @@ class ObdProvider extends ChangeNotifier {
 
     if (_isDemoMode) stopDemoMode();
 
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
-    }
-    if (permission == LocationPermission.deniedForever) return;
-
     _isGpsMode = true;
     await prefs.setBool('last_was_gps_mode', true);
     state = ObdConnectionState.ready;
     _initMessage = "GPS ACTIVE";
 
-    _gpsSubscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.bestForNavigation),
-    ).listen((Position position) {
-      final kmh = (position.speed * 3.6).round();
-      int simulatedRpm = 800 + (kmh * 20);
-      if (kmh > 0) simulatedRpm += 1000;
-      if (simulatedRpm > 6500) simulatedRpm = 6500;
-
-      _data = _data.copyWith(
-        speed: kmh,
-        rpm: simulatedRpm,
-        engineTemp: 90,
-        voltage: 14.2,
-        fuelLevel: 65,
-        odometer: 154230,
-        gear: kmh > 0 ? 'D' : 'P',
-      );
-      notifyListeners();
+    AnalyticsService.instance.logEvent('vehicle_connected', data: {
+      'mode': 'gps',
     });
 
     notifyListeners();
@@ -356,7 +439,7 @@ class ObdProvider extends ChangeNotifier {
   Future<bool> runHandshake() async {
     try {
       state = ObdConnectionState.initializing;
-      _initMessage = "Connecting to ECU";
+      _initMessage = "connecting"; // Key for localization
       notifyListeners();
 
       String atz = await _sendAndWait("ATZ");
@@ -378,7 +461,7 @@ class ObdProvider extends ChangeNotifier {
       await Future.delayed(const Duration(milliseconds: 300));
       return true;
     } catch (e) {
-      _initMessage = "Initialization error";
+      _initMessage = "error_not_responding"; // Generic key
       notifyListeners();
       return false;
     }

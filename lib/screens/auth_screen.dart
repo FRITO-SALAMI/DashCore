@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dashcore/services/supabase_service.dart';
+import 'package:dashcore/services/analytics_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -61,10 +62,11 @@ class _AuthScreenState extends State<AuthScreen> {
       }
 
       if (_isRegistering) {
+        AnalyticsService.instance.logEvent('signup_started');
         await client.auth.signUp(
           email: email,
           password: password,
-          emailRedirectTo: SupabaseService.redirectUrl,
+          emailRedirectTo: 'io.dashcore.app://login-callback',
         );
 
         if (!mounted) return;
@@ -237,7 +239,30 @@ class _AuthScreenState extends State<AuthScreen> {
                             icon: Icons.lock_outline,
                             isPassword: true,
                           ),
-                          const SizedBox(height: 30),
+                          if (!_isRegistering)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: _isLoading ? null : () async {
+                                  final email = _emailController.text.trim();
+                                  if (email.isEmpty) {
+                                    _showMessage('Introduce tu correo para restablecer.', isError: true);
+                                    return;
+                                  }
+                                  try {
+                                    await SupabaseService.instance.resetPassword(email);
+                                    _showMessage('Enlace de recuperación enviado a $email');
+                                  } catch (e) {
+                                    _showMessage('Error al enviar recuperación.', isError: true);
+                                  }
+                                },
+                                child: const Text(
+                                  '¿Olvidaste tu contraseña?',
+                                  style: TextStyle(color: themeColor, fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                          const SizedBox(height: 15),
                           SizedBox(
                             width: double.infinity,
                             height: 55,

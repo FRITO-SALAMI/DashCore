@@ -114,8 +114,9 @@ class _ClassicSportThemeScreenState extends State<ClassicSportThemeScreen> {
                                   disableZoom: true,
                                   disablePan: true,
                                   cameraOrbit: '180deg 75deg 3m',
-                                  loading: Loading.eager,
+                                  loading: Loading.lazy,
                                   exposure: 1.0,
+                                  shadowIntensity: 0.1,
                                 ),
                               ),
                             ),
@@ -302,21 +303,6 @@ class _CenterReadout extends StatelessWidget {
         const Text(
           'km/h',
           style: TextStyle(color: Color(0xFF7C8790), fontSize: 14, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
-        Container(height: 2, color: Colors.white12, width: 60),
-        const SizedBox(height: 10),
-        Text(
-          odometerKm.round().toString(),
-          style: const TextStyle(
-            color: Color(0xFFEFF2F4),
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const Text(
-          'km',
-          style: TextStyle(color: Color(0xFF7C8790), fontSize: 12, fontWeight: FontWeight.bold),
         ),
       ],
     );

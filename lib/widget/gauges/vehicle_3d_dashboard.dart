@@ -48,10 +48,10 @@ class Vehicle3DDashboard extends StatelessWidget {
                   disableZoom: false,
                   disablePan: true,
                   cameraOrbit: '35deg 75deg 4.2m',
-                  shadowIntensity: 1,
+                  shadowIntensity: 0.1,
                   exposure: 1.0,
                   environmentImage: 'neutral',
-                  loading: Loading.eager,
+                  loading: Loading.lazy,
                 ),
                 Positioned(
                   left: 40, top: 40,
@@ -92,7 +92,7 @@ class Vehicle3DDashboard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'KILOMETERS PER HOUR',
+                    'KM/H',
                     style: TextStyle(color: accentColor, fontWeight: FontWeight.bold, letterSpacing: 12, fontSize: 18),
                   ),
                   const SizedBox(height: 20),

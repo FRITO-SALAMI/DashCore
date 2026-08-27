@@ -13,7 +13,6 @@ import '../widget/gauges/sporty_dashboard.dart';
 import '../widget/gauges/racing_dashboard.dart';
 import '../widget/gauges/modern_dashboard.dart';
 import '../widget/gauges/vehicle_3d_dashboard.dart';
-import '../widget/gauges/purple_puff_dashboard.dart';
 import '../widget/gauges/racing_hud_dashboard.dart';
 import '../widget/gauges/glow_red_dashboard.dart';
 import '../widget/gauges/hellish_red_dashboard.dart';
@@ -24,6 +23,12 @@ import 'dashboard/themes/tesla_style_theme_screen.dart';
 import 'dashboard/themes/classic_sport_theme_screen.dart';
 import 'dashboard/themes/race_cluster_theme_screen.dart';
 import 'dashboard/themes/modern_tesla_themes.dart';
+
+import '../widget/gauges/purple_maps_dashboard.dart';
+import '../widget/gauges/neon_world_dashboard.dart';
+import '../widget/gauges/dashcore_dashboard.dart';
+import '../utils/app_localizations.dart';
+import '../widget/dashboard_background.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -236,6 +241,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final obdData = obdProvider.data;
 
+    final isGifBackground = dashSettings.backgroundImage?.endsWith('.gif') ?? false;
+
+    final loc = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -252,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            if (dashSettings.lightDesign != 0)
+            if (dashSettings.lightDesign != 0 && !isGifBackground && dashSettings.selectedStyle != DashboardStyle.sketch)
               Positioned.fill(
                 child: _DashboardLightOverlay(
                   color: dashSettings.lightColor,
@@ -324,15 +333,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     if (dashSettings.isEditMode && isBeingEdited)
                       Positioned(
-                        right: -10,
-                        bottom: -10,
+                        right: -20,
+                        bottom: -20,
                         child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
                           onPanUpdate: (details) {
                             final newSize = Size(
                               (config.size.width + details.delta.dx)
-                                  .clamp(50.0, 500.0),
+                                  .clamp(80.0, 600.0), // Min size increased
                               (config.size.height + details.delta.dy)
-                                  .clamp(30.0, 300.0),
+                                  .clamp(40.0, 400.0),
                             );
 
                             dashSettings.updateGaugeSize(
@@ -341,15 +351,22 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                           },
                           child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF00E5FF),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.open_in_full_rounded,
-                              size: 14,
-                              color: Colors.black,
+                            width: 50, height: 50, // Even larger area
+                            color: Colors.transparent, // Ensure it captures taps
+                            child: Center(
+                              child: Container(
+                                width: 28, height: 28,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF00E5FF),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 5)],
+                                ),
+                                child: const Icon(
+                                  Icons.open_in_full_rounded,
+                                  size: 16,
+                                  color: Colors.black,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -361,61 +378,72 @@ class _HomeScreenState extends State<HomeScreen> {
 
             if (dashSettings.isEditMode)
               Positioned(
-                top: 20,
+                bottom: 20,
+                left: 20,
                 right: 20,
-                child: Column(
-                  children: [
-                    FloatingActionButton(
-                      heroTag: 'add_gauge',
-                      onPressed: () {
-                        _showAddGaugeMenu(
-                          context,
-                          dashSettings,
-                        );
-                      },
-                      backgroundColor: const Color(0xFF00E5FF),
-                      child: const Icon(
-                        Icons.add,
-                        color: Colors.black,
+                child: Container(
+                  height: 70,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF13161D).withOpacity(0.95),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.4),
+                        blurRadius: 20,
+                        offset: const Offset(0, 5),
                       ),
+                    ],
+                  ),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _EditBarButton(
+                          icon: Icons.add_rounded,
+                          label: 'GADGET',
+                          onTap: () => _showAddGaugeMenu(context, dashSettings),
+                        ),
+                        _EditBarButton(
+                          icon: Icons.create_new_folder_rounded,
+                          label: loc.translate('new_sketch'),
+                          onTap: () {
+                             dashSettings.createNewSketch();
+                             ScaffoldMessenger.of(context).showSnackBar(
+                               SnackBar(content: Text(loc.translate('new_sketch')))
+                             );
+                          },
+                        ),
+                        _EditBarButton(
+                          icon: Icons.palette_rounded,
+                          label: 'STYLING',
+                          onTap: () {
+                            setState(() {
+                              _showStyleConfig = !_showStyleConfig;
+                              if (!_showStyleConfig) _editingGaugeId = null;
+                            });
+                          },
+                        ),
+                        const VerticalDivider(color: Colors.white10, indent: 20, endIndent: 20),
+                        _EditBarButton(
+                          icon: Icons.check_circle_rounded,
+                          label: 'FINISH EDITING',
+                          color: const Color(0xFF00E5FF),
+                          onTap: () {
+                            if (dashSettings.selectedStyle == DashboardStyle.sketch) {
+                              dashSettings.saveAsMyStyle();
+                            }
+                            dashSettings.toggleEditMode();
+                            setState(() {
+                              _showStyleConfig = false;
+                              _editingGaugeId = null;
+                            });
+                          },
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    FloatingActionButton(
-                      heroTag: 'style_config',
-                      onPressed: () {
-                        setState(() {
-                          _showStyleConfig = !_showStyleConfig;
-
-                          if (!_showStyleConfig) {
-                            _editingGaugeId = null;
-                          }
-                        });
-                      },
-                      backgroundColor: Colors.purpleAccent,
-                      child: const Icon(
-                        Icons.palette_rounded,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    FloatingActionButton(
-                      heroTag: 'close_edit',
-                      mini: true,
-                      onPressed: () {
-                        dashSettings.toggleEditMode();
-
-                        setState(() {
-                          _showStyleConfig = false;
-                          _editingGaugeId = null;
-                        });
-                      },
-                      backgroundColor: Colors.redAccent,
-                      child: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
 
@@ -498,6 +526,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                     _AddGaugeItem(
+                      icon: Icons.local_gas_station_rounded,
+                      label: 'FUEL',
+                      onTap: () {
+                        settings.addCustomGauge('fuel');
+                        Navigator.pop(ctx);
+                      },
+                    ),
+                    _AddGaugeItem(
                       icon: Icons.bolt,
                       label: 'VOLT',
                       onTap: () {
@@ -510,6 +546,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       label: 'MUSIC',
                       onTap: () {
                         settings.addCustomGauge('music_hub');
+                        Navigator.pop(ctx);
+                      },
+                    ),
+                    _AddGaugeItem(
+                      icon: Icons.crop_square_rounded,
+                      label: 'BOX',
+                      onTap: () {
+                        settings.addCustomGauge('box');
                         Navigator.pop(ctx);
                       },
                     ),
@@ -537,6 +581,9 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'temp':
         return data.engineTemp;
 
+      case 'fuel':
+        return data.fuelLevel;
+
       case 'music_hub':
         return '';
 
@@ -557,6 +604,9 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'temp':
         return '°C';
 
+      case 'fuel':
+        return '%';
+
       case 'music_hub':
         return '';
 
@@ -571,6 +621,7 @@ class _HomeScreenState extends State<HomeScreen> {
     dynamic obdData,
     MusicProvider music,
   ) {
+    final loc = AppLocalizations.of(context);
     final tempUnitStr =
         settings.tempUnit == TemperatureUnit.celsius
             ? '°C'
@@ -636,8 +687,24 @@ class _HomeScreenState extends State<HomeScreen> {
           modelPath: settings.modelPath,
         );
 
-      case DashboardStyle.purplePuff:
-        return PurplePuffDashboard(
+      case DashboardStyle.purpleMaps:
+        return PurpleMapsDashboard(
+          speed: obdData.speed,
+          rpm: obdData.rpm,
+          coolantTemp: convertedTemp,
+          voltage: obdData.voltage,
+        );
+
+      case DashboardStyle.neonWorld:
+        return NeonWorldDashboard(
+          speed: obdData.speed,
+          rpm: obdData.rpm,
+          coolantTemp: convertedTemp,
+          voltage: obdData.voltage,
+        );
+
+      case DashboardStyle.dashcore:
+        return DashcoreDashboard(
           speed: obdData.speed,
           rpm: obdData.rpm,
           coolantTemp: convertedTemp,
@@ -683,6 +750,8 @@ class _HomeScreenState extends State<HomeScreen> {
           onPlayPause: music.playPause,
           onPrev: music.previous,
           onNext: music.next,
+          backgroundImage: settings.backgroundImage,
+          isAssetBackground: settings.isAssetBackground,
           appSlotBuilder: (context, index) {
             final pkg = settings.teslaAppSlots[index];
 
@@ -789,6 +858,27 @@ class _HomeScreenState extends State<HomeScreen> {
           modelPath: settings.modelPath,
           nowPlayingTitle: music.trackTitle,
           accentColor: settings.accentColor,
+          backgroundImage: settings.backgroundImage,
+          isAssetBackground: settings.isAssetBackground,
+        );
+
+      case DashboardStyle.sketch:
+      case DashboardStyle.myStyle:
+        return Stack(
+          children: [
+            if (settings.backgroundImage != null)
+              DashboardBackground(
+                backgroundImage: settings.backgroundImage,
+                isAssetBackground: settings.isAssetBackground,
+                opacity: 0.2,
+              ),
+            Center(
+              child: Text(
+                settings.selectedStyle == DashboardStyle.myStyle ? 'MI ESTILO' : loc.translate('new_sketch'),
+                style: const TextStyle(color: Colors.white10, fontSize: 40, fontWeight: FontWeight.w900),
+              ),
+            ),
+          ],
         );
     }
   }
@@ -798,40 +888,30 @@ class _HomeScreenState extends State<HomeScreen> {
     Color color,
   ) {
     IconData icon = Icons.apps_rounded;
+    final p = pkg.toLowerCase();
 
-    if (pkg.contains('maps') ||
-        pkg.contains('google.android.apps.maps')) {
+    if (p.contains('maps') || p.contains('navigation') || p.contains('waze')) {
       icon = Icons.map_rounded;
-    }
-
-    if (pkg.contains('spotify')) {
+    } else if (p.contains('spotify') || p.contains('music') || p.contains('player')) {
       icon = Icons.music_note_rounded;
-    }
-
-    if (pkg.contains('youtube')) {
+    } else if (p.contains('youtube') || p.contains('video') || p.contains('netflix')) {
       icon = Icons.video_library_rounded;
-    }
-
-    if (pkg.contains('waze')) {
-      icon = Icons.navigation_rounded;
-    }
-
-    if (pkg.contains('netflix')) {
-      icon = Icons.movie_rounded;
-    }
-
-    if (pkg.contains('chrome') ||
-        pkg.contains('browser')) {
+    } else if (p.contains('chrome') || p.contains('browser') || p.contains('opera')) {
       icon = Icons.public_rounded;
-    }
-
-    if (pkg.contains('dialer') ||
-        pkg.contains('phone')) {
+    } else if (p.contains('phone') || p.contains('dialer') || p.contains('contacts')) {
       icon = Icons.phone_rounded;
-    }
-
-    if (pkg.contains('messaging')) {
+    } else if (p.contains('message') || p.contains('sms') || p.contains('whatsapp') || p.contains('telegram') || p.contains('messenger')) {
       icon = Icons.message_rounded;
+    } else if (p.contains('setting')) {
+      icon = Icons.settings_rounded;
+    } else if (p.contains('camera')) {
+      icon = Icons.camera_alt_rounded;
+    } else if (p.contains('gallery') || p.contains('photo')) {
+      icon = Icons.photo_library_rounded;
+    } else if (p.contains('radio')) {
+      icon = Icons.radio_rounded;
+    } else if (p.contains('clock') || p.contains('alarm')) {
+      icon = Icons.access_time_filled_rounded;
     }
 
     return Icon(
@@ -1343,6 +1423,49 @@ class _AddGaugeItem extends StatelessWidget {
   }
 }
 
+class _EditBarButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color? color;
+
+  const _EditBarButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final activeColor = color ?? Colors.white.withOpacity(0.7);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: activeColor, size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: activeColor,
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _StyleConfigPanel extends StatefulWidget {
   final DashSettingsProvider settings;
   final String? editingGaugeId;
@@ -1492,6 +1615,7 @@ class _StyleConfigPanelState extends State<_StyleConfigPanel> {
                 onColorSelected: (c) =>
                     widget.settings.setGaugeColor(c),
               ),
+              const SizedBox(height: 20),
               const SizedBox(height: 30),
               const Text(
                 'DISEÑO DE ILUMINACIÓN',
