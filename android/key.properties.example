@@ -1,0 +1,5 @@
+# Copy this file to android/key.properties and keep the real file private.
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=dashcore
+storeFile=../keystore/dashcore-release.jks

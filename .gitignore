@@ -1,0 +1,73 @@
+# ============================================================
+# DashCore - Git Ignore
+# ============================================================
+
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+
+# Build outputs
+build/
+android/.gradle/
+android/app/build/
+android/build/
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Android local configuration
+android/local.properties
+android/.cxx/
+
+# iOS generated files
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+
+# macOS generated files
+macos/Pods/
+macos/Flutter/ephemeral/
+
+# Windows generated files
+windows/flutter/ephemeral/
+
+# Linux generated files
+linux/flutter/ephemeral/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Generated files
+coverage/
+
+# DashCore local build/output files
+android/build_error.txt
+android/gradle.properties.backup
+build_error.txt
+build_log.txt
+dashcore-beta.apk
+*.apk
+
+# Local/private files
+.artifacts/
+*.env
+*.env.*
+*.key
+*.pem
+*.keystore
+*.jks
+android/key.properties
+
+# Firebase private configuration
+google-services.json
+GoogleService-Info.plist

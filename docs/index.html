@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DashCore — open-source OBD2 приложение</title>
+  <meta name="description" content="DashCore — open-source Flutter приложение для OBD2: телеметрия, подключение к ELM327, диагностика и чистый UI без рекламы." />
+  <meta name="theme-color" content="#0b0d0a" />
+  <meta property="og:title" content="DashCore — drive smarter" />
+  <meta property="og:description" content="Открытая OBD2-платформа для водителей и контрибьюторов." />
+  <meta property="og:image" content="assets/dashcore-logo.webp" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+  <header class="topbar" data-elevate>
+    <a class="brand" href="#top" aria-label="DashCore home">
+      <span class="brand-mark">D</span>
+      <span>Dash<span>Core</span></span>
+    </a>
+    <nav class="nav" aria-label="Основная навигация">
+      <a href="#features">Возможности</a>
+      <a href="#architecture">Архитектура</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#contribute">Контрибьютинг</a>
+    </nav>
+    <a class="github-link" href="https://github.com/iUnreallx/DashCore" target="_blank" rel="noreferrer">GitHub</a>
+  </header>
+
+  <main id="top">
+    <section class="hero section" aria-labelledby="hero-title">
+      <div class="hero-copy reveal">
+        <p class="eyebrow"><span></span> Flutter · Dart · OBD2 · ELM327</p>
+        <h1 id="hero-title">Open-source приборка и диагностика автомобиля.</h1>
+        <p class="hero-text">DashCore превращает смартфон в чистый OBD2-дэшборд: скорость, RPM, температура, напряжение, подключение к адаптеру и база для диагностики без рекламы и пейволлов.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="https://github.com/iUnreallx/DashCore" target="_blank" rel="noreferrer">Стать контрибьютором</a>
+          <a class="button ghost" href="#roadmap">Смотреть план</a>
+        </div>
+        <div class="metrics" aria-label="Кратко о проекте">
+          <div><b>174</b><span>коммита</span></div>
+          <div><b>5</b><span>звёзд</span></div>
+          <div><b>GPLv3</b><span>лицензия</span></div>
+        </div>
+      </div>
+      <div class="hero-visual reveal" aria-label="Интерфейс DashCore">
+        <div class="car-glow"></div>
+        <img class="car" src="assets/car.webp" alt="Автомобиль DashCore" />
+        <div class="phone phone-left">
+          <img src="assets/screen-dashboard.webp" alt="Главный экран DashCore с телеметрией" />
+        </div>
+        <div class="phone phone-right">
+          <img src="assets/screen-connection.webp" alt="Экран подключения DashCore" />
+        </div>
+      </div>
+    </section>
+
+    <section class="section strip reveal" aria-label="Ценность продукта">
+      <p>Задача DashCore простая: <strong>дать водителю данные из ECU в понятном виде</strong>, а разработчику — чистую базу для расширения OBD2-функций.</p>
+    </section>
+
+    <section id="features" class="section reveal">
+      <div class="section-head">
+        <p class="eyebrow"><span></span> Что уже есть</p>
+        <h2>Функциональность без визуального мусора.</h2>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <span class="icon">01</span>
+          <h3>Live Data</h3>
+          <p>Скорость, обороты двигателя, температура охлаждающей жидкости и напряжение адаптера/бортовой сети.</p>
+        </article>
+        <article class="feature-card">
+          <span class="icon">02</span>
+          <h3>ELM327 handshake</h3>
+          <p>Инициализация ATZ, ATE0, ATL0, ATSP0 и polling базовых PID через OBD-соединение.</p>
+        </article>
+        <article class="feature-card">
+          <span class="icon">03</span>
+          <h3>Bluetooth Classic</h3>
+          <p>Поиск устройств, подключение, отмена, защита от race conditions и фоновое переподключение.</p>
+        </article>
+        <article class="feature-card">
+          <span class="icon">04</span>
+          <h3>Demo mode</h3>
+          <p>Тестовые данные без машины — удобно для UI, отладки и будущих contributor-friendly сценариев.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section product-showcase reveal">
+      <div class="showcase-copy">
+        <p class="eyebrow"><span></span> UI/UX</p>
+        <h2>Большие числа. Тёмная тема. Никаких отвлекающих элементов.</h2>
+        <p>Интерфейс ориентирован на быстрый взгляд в машине: крупная телеметрия, явные состояния подключения, нижняя навигация и акцентный цвет.</p>
+      </div>
+      <div class="screens">
+        <img src="assets/screen-dashboard.webp" alt="Dashboard DashCore" />
+        <img src="assets/screen-connection.webp" alt="Connection DashCore" />
+      </div>
+    </section>
+
+    <section id="architecture" class="section reveal">
+      <div class="section-head narrow">
+        <p class="eyebrow"><span></span> Архитектура</p>
+        <h2>Понятный путь от UI до адаптера.</h2>
+        <p>Сейчас проект уже разделён на providers, services, models, screens и reusable widgets. Следующий большой шаг — вынести OBD/ELM-логику из provider в отдельные сервисы.</p>
+      </div>
+      <div class="flow" aria-label="Архитектура DashCore">
+        <div><b>UI</b><span>screens / widgets</span></div>
+        <i></i>
+        <div><b>Provider</b><span>готовое состояние</span></div>
+        <i></i>
+        <div><b>ObdService</b><span>polling / session</span></div>
+        <i></i>
+        <div><b>ElmClient</b><span>commands / queue</span></div>
+        <i></i>
+        <div><b>Transport</b><span>Bluetooth / Wi‑Fi / USB</span></div>
+      </div>
+      <div class="repo-grid">
+        <div><code>core/</code><span>тема, цвета</span></div>
+        <div><code>models/</code><span>OBD data, device</span></div>
+        <div><code>providers/</code><span>Bluetooth, OBD state</span></div>
+        <div><code>services/</code><span>connection abstractions</span></div>
+        <div><code>screens/</code><span>Home, Connection, Garage</span></div>
+        <div><code>widget/</code><span>карточки, bottom bar, баннеры</span></div>
+      </div>
+    </section>
+
+    <section id="roadmap" class="section reveal">
+      <div class="section-head">
+        <p class="eyebrow"><span></span> Roadmap</p>
+        <h2>Куда двигать проект дальше.</h2>
+      </div>
+      <div class="timeline">
+        <article class="done">
+          <span>Готово</span>
+          <h3>База MVP</h3>
+          <p>Flutter-структура, тёмный UI, карточки телеметрии, Bluetooth, demo mode, reconnect banner, базовый ELM327 polling.</p>
+        </article>
+        <article>
+          <span>MVP</span>
+          <h3>OBD architecture cleanup</h3>
+          <p>ElmClient, ElmCommandQueue, PID registry/decoder, error types, тесты парсинга и очереди команд.</p>
+        </article>
+        <article>
+          <span>MVP</span>
+          <h3>Wi‑Fi + Dashboard</h3>
+          <p>TCP transport для Wi‑Fi адаптеров, переключатель Bluetooth/Wi‑Fi/USB, крупные gauge-режимы и выбор датчиков.</p>
+        </article>
+        <article>
+          <span>MVP</span>
+          <h3>DTC + Garage</h3>
+          <p>Чтение/очистка ошибок, freeze frame, профили автомобилей, история ошибок и настройки dashboard под машину.</p>
+        </article>
+        <article>
+          <span>После MVP</span>
+          <h3>Packs, logs, replay</h3>
+          <p>Безопасные DashCore Packs, raw logs, OBD replay, adapter benchmark и community registry через GitHub.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="contribute" class="section contribute reveal">
+      <div>
+        <p class="eyebrow"><span></span> Для контрибьюторов</p>
+        <h2>Есть конкретные зоны, где помощь сразу полезна.</h2>
+      </div>
+      <div class="contribute-grid">
+        <div>
+          <h3>Код</h3>
+          <p>OBD core, Wi‑Fi transport, DTC decoder, Garage, настройки, оптимизация UI rebuilds.</p>
+        </div>
+        <div>
+          <h3>Тесты</h3>
+          <p>PID-формулы, ELM327 ответы, reconnect, таймауты, mock TCP loss, parsing Mode 03/07/0A.</p>
+        </div>
+        <div>
+          <h3>Документация</h3>
+          <p>DashCore Packs, contributor guide, sample logs без персональных данных, UX-гайды для dashboard.</p>
+        </div>
+      </div>
+      <div class="terminal" aria-label="Команды запуска">
+        <div><span></span><span></span><span></span></div>
+        <pre><code>git clone https://github.com/iUnreallx/DashCore.git
+cd DashCore
+flutter pub get
+flutter run</code></pre>
+      </div>
+      <div class="final-cta">
+        <h2>Хочешь OBD2 без мусора — заходи в проект.</h2>
+        <a class="button primary" href="https://github.com/iUnreallx/DashCore" target="_blank" rel="noreferrer">Открыть GitHub</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>DashCore · open-source OBD2</span>
+    <a href="https://github.com/iUnreallx/DashCore" target="_blank" rel="noreferrer">github.com/iUnreallx/DashCore</a>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

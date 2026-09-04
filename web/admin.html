@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DashCore Admin - Avisos Remotos</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00E5FF;
+            --bg: #050608;
+            --card: #0D1117;
+            --text: #FFFFFF;
+            --text-dim: rgba(255, 255, 255, 0.5);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            width: 100%;
+            padding: 20px;
+            background: rgba(13, 17, 23, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-weight: 900;
+            letter-spacing: 4px;
+            font-size: 1.2rem;
+        }
+
+        .logo span {
+            color: var(--primary);
+        }
+
+        main {
+            width: 100%;
+            max-width: 1000px;
+            padding: 40px 20px;
+            box-sizing: border-box;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            margin-top: 0;
+            font-weight: 900;
+            letter-spacing: 1px;
+            color: var(--primary);
+            font-size: 1rem;
+            text-transform: uppercase;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: var(--text-dim);
+        }
+
+        input, textarea {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            color: white;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        button {
+            background: var(--primary);
+            color: black;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.02);
+        }
+
+        button.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        button.danger {
+            background: #ff4444;
+            color: white;
+        }
+
+        .announcement-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .announcement-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .announcement-info h3 {
+            margin: 0 0 5px 0;
+            font-size: 1rem;
+        }
+
+        .announcement-info p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        .status-badge {
+            font-size: 0.7rem;
+            padding: 4px 8px;
+            border-radius: 5px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-active { background: rgba(0, 229, 255, 0.2); color: var(--primary); }
+        .status-inactive { background: rgba(255, 255, 255, 0.1); color: var(--text-dim); }
+
+        #login-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 80vh;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">DASH<span>CORE</span> ADMIN</div>
+    <div id="user-info">
+        <button id="btn-logout" class="secondary hidden">Cerrar Sesión</button>
+    </div>
+</header>
+
+<main>
+    <!-- Login Section -->
+    <div id="login-screen" class="card">
+        <h2>Acceso Administrativo</h2>
+        <div class="form-group" style="width: 100%;">
+            <label>Correo Electrónico</label>
+            <input type="email" id="login-email" placeholder="admin@dashcore.app">
+        </div>
+        <div class="form-group" style="width: 100%;">
+            <label>Contraseña</label>
+            <input type="password" id="login-password" placeholder="••••••••">
+        </div>
+        <button id="btn-login" style="width: 100%;">ENTRAR</button>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div id="admin-dashboard" class="hidden">
+
+        <!-- Create New Announcement -->
+        <div class="card">
+            <h2>Publicar Nuevo Aviso</h2>
+            <div class="form-group">
+                <label>Título del Aviso</label>
+                <input type="text" id="announce-title" placeholder="Ej: Mantenimiento Programado">
+            </div>
+            <div class="form-group">
+                <label>Mensaje</label>
+                <textarea id="announce-message" rows="3" placeholder="Escribe el contenido del aviso..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Fecha de Expiración (Opcional)</label>
+                <input type="datetime-local" id="announce-expiry">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button id="btn-publish">PUBLICAR AHORA</button>
+                <button id="btn-clear" class="secondary">LIMPIAR</button>
+            </div>
+        </div>
+
+        <!-- List of Announcements -->
+        <div class="card">
+            <h2>Historial de Avisos</h2>
+            <div id="announcements-list" class="announcement-list">
+                <p style="color: var(--text-dim);">Cargando avisos...</p>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<script>
+    const SUPABASE_URL = 'https://pvcfwpziojocogfctgbw.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_4t_Vq6QlMSK5EMVVxY7d0w_g-oY3QiC';
+
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Elements
+    const loginScreen = document.getElementById('login-screen');
+    const adminDashboard = document.getElementById('admin-dashboard');
+    const btnLogout = document.getElementById('btn-logout');
+    const listContainer = document.getElementById('announcements-list');
+
+    // Auth State
+    supabase.auth.onAuthStateChange((event, session) => {
+        if (session) {
+            loginScreen.classList.add('hidden');
+            adminDashboard.classList.remove('hidden');
+            btnLogout.classList.remove('hidden');
+            loadAnnouncements();
+        } else {
+            loginScreen.classList.remove('hidden');
+            adminDashboard.classList.add('hidden');
+            btnLogout.classList.add('hidden');
+        }
+    });
+
+    // Login Logic
+    document.getElementById('btn-login').onclick = async () => {
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) alert('Error: ' + error.message);
+    };
+
+    // Logout Logic
+    btnLogout.onclick = async () => {
+        await supabase.auth.signOut();
+    };
+
+    // Load Announcements
+    async function loadAnnouncements() {
+        const { data, error } = await supabase
+            .from('remote_announcements')
+            .select('*')
+            .order('published_at', { ascending: false });
+
+        if (error) {
+            listContainer.innerHTML = `<p style="color: #ff4444;">Error: ${error.message}</p>`;
+            return;
+        }
+
+        if (data.length === 0) {
+            listContainer.innerHTML = `<p style="color: var(--text-dim);">No hay avisos registrados.</p>`;
+            return;
+        }
+
+        listContainer.innerHTML = '';
+        data.forEach(item => {
+            const el = document.createElement('div');
+            el.className = 'announcement-item';
+            el.innerHTML = `
+                <div class="announcement-info">
+                    <h3>${item.title} <span class="status-badge ${item.is_active ? 'status-active' : 'status-inactive'}">${item.is_active ? 'Activo' : 'Inactivo'}</span></h3>
+                    <p>${item.message}</p>
+                    <p style="font-size: 0.7rem; margin-top: 5px;">Publicado: ${new Date(item.published_at).toLocaleString()}</p>
+                    ${item.expires_at ? `<p style="font-size: 0.7rem;">Expira: ${new Date(item.expires_at).toLocaleString()}</p>` : ''}
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="toggleActive('${item.id}', ${item.is_active})" class="secondary" style="padding: 8px 12px; font-size: 0.7rem;">
+                        ${item.is_active ? 'DESACTIVAR' : 'ACTIVAR'}
+                    </button>
+                    <button onclick="deleteAnnouncement('${item.id}')" class="danger" style="padding: 8px 12px; font-size: 0.7rem;">
+                        ELIMINAR
+                    </button>
+                </div>
+            `;
+            listContainer.appendChild(el);
+        });
+    }
+
+    // Publish Logic
+    document.getElementById('btn-publish').onclick = async () => {
+        const title = document.getElementById('announce-title').value;
+        const message = document.getElementById('announce-message').value;
+        const expires_at = document.getElementById('announce-expiry').value || null;
+
+        if (!title || !message) {
+            alert('Por favor completa título y mensaje.');
+            return;
+        }
+
+        // Primero desactivar todos los demás para asegurar que solo uno esté activo (opcional según lógica de negocio)
+        // await supabase.from('remote_announcements').update({ is_active: false }).eq('is_active', true);
+
+        const { error } = await supabase
+            .from('remote_announcements')
+            .insert([{
+                title,
+                message,
+                expires_at,
+                is_active: true,
+                published_at: new Date().toISOString()
+            }]);
+
+        if (error) {
+            alert('Error al publicar: ' + error.message);
+        } else {
+            document.getElementById('announce-title').value = '';
+            document.getElementById('announce-message').value = '';
+            document.getElementById('announce-expiry').value = '';
+            loadAnnouncements();
+        }
+    };
+
+    // Toggle Active
+    window.toggleActive = async (id, currentState) => {
+        const { error } = await supabase
+            .from('remote_announcements')
+            .update({ is_active: !currentState })
+            .eq('id', id);
+
+        if (error) alert('Error: ' + error.message);
+        else loadAnnouncements();
+    };
+
+    // Delete Logic
+    window.deleteAnnouncement = async (id) => {
+        if (!confirm('¿Estás seguro de eliminar este aviso?')) return;
+        const { error } = await supabase
+            .from('remote_announcements')
+            .delete()
+            .eq('id', id);
+
+        if (error) alert('Error: ' + error.message);
+        else loadAnnouncements();
+    };
+
+</script>
+</body>
+</html>
