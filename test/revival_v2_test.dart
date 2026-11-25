@@ -40,6 +40,8 @@ class PreviewSettings implements DashSettingsProvider {
   @override
   bool get reduceMotion => true;
   @override
+  bool get isLowResourceDevice => false;
+  @override
   String get speedUnitLabel => 'KM/H';
   @override
   double displaySpeed(num kmh) => kmh.toDouble();
