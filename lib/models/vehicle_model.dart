@@ -9,6 +9,10 @@ class Vehicle {
   final String? backgroundUrl;
   final String? modelUrl;
   final bool isDownloaded;
+  final bool isCustom;
+  final String? artworkPath;
+  final String? rearArtworkPath;
+  final String? paintColorHex;
 
   const Vehicle({
     required this.id,
@@ -21,6 +25,10 @@ class Vehicle {
     this.backgroundUrl,
     this.modelUrl,
     this.isDownloaded = false,
+    this.isCustom = false,
+    this.artworkPath,
+    this.rearArtworkPath,
+    this.paintColorHex,
   });
 
   factory Vehicle.fromSupabase(
@@ -29,16 +37,19 @@ class Vehicle {
     String? localModel,
     String? localBg,
   }) {
+    final id = data['id']?.toString() ?? '';
+    final modelUrl = data['model_url']?.toString();
+
     return Vehicle(
-      id: data['id']?.toString() ?? '',
+      id: id,
       name: data['name'] ?? 'Unknown',
       brand: data['brand'] ?? 'Unknown',
       year: data['version']?.toString(), // Map 'version' from DB to year/version
       engine: data['engine']?.toString(),
       backgroundImage: localBg ?? data['background_url'] ?? '',
-      modelPath: localModel ?? data['model_url'] ?? '',
+      modelPath: localModel ?? modelUrl ?? '',
       backgroundUrl: data['background_url'],
-      modelUrl: data['model_url'],
+      modelUrl: modelUrl,
       isDownloaded: downloaded,
     );
   }
@@ -49,6 +60,9 @@ class Vehicle {
     bool? isDownloaded,
     String? year,
     String? engine,
+    String? artworkPath,
+    String? rearArtworkPath,
+    String? paintColorHex,
   }) {
     return Vehicle(
       id: id,
@@ -61,6 +75,10 @@ class Vehicle {
       backgroundUrl: backgroundUrl,
       modelUrl: modelUrl,
       isDownloaded: isDownloaded ?? this.isDownloaded,
+      isCustom: isCustom,
+      artworkPath: artworkPath ?? this.artworkPath,
+      rearArtworkPath: rearArtworkPath ?? this.rearArtworkPath,
+      paintColorHex: paintColorHex ?? this.paintColorHex,
     );
   }
 }

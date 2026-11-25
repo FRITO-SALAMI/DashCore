@@ -1,6 +1,7 @@
+import '../display_units.dart';
+import '../compatible_vehicle_model.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'package:provider/provider.dart';
 import '../../providers/dash_settings_provider.dart';
 import '../rpm_warning_animation.dart';
@@ -57,99 +58,152 @@ class RetroLcdTheme extends StatelessWidget {
               aspectRatio: 16 / 9,
               child: Container(
                 margin: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _panelBg,
-              border: Border.all(color: Colors.white10, width: 1.5),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(color: accentColor.withOpacity(0.05), blurRadius: 40, spreadRadius: 2),
-              ],
-            ),
-            child: Stack(
-              children: [
-                // Scanlines / LCD Grid
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _RetroLcdGridPainter(color: accentColor.withOpacity(0.03)),
-                  ),
-                ),
-                
-                Column(
-                  children: [
-                    // TOP: HEADER WITH CHROME ACCENT
-                    Container(
-                      height: 40,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.white.withOpacity(0.1), Colors.transparent],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                        border: const Border(bottom: BorderSide(color: Colors.white24, width: 0.5)),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('DASHCORE VINTAGE SERIES', style: TextStyle(color: accentColor.withOpacity(0.7), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2)),
-                          Row(
-                            children: [
-                              _StatusIndicator(label: 'READY', isActive: true, color: Colors.greenAccent),
-                              const SizedBox(width: 15),
-                              _StatusIndicator(label: 'BEAM', isActive: false, color: Colors.blueAccent),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    Expanded(
-                      child: Row(
-                        children: [
-                          // LEFT PANEL: ANALOG-STYLE INDICATORS
-                          _RetroAnalogPanel(data: data, color: accentColor),
-                          
-                          // CENTER: 3D VIEW & SPEED
-                          Expanded(
-                            flex: 3,
-                            child: _RetroCenterConsole(data: data, color: accentColor),
-                          ),
-                          
-                          // RIGHT PANEL: RPM & MISC
-                          RpmWarningAnimation(
-                            rpm: data.rpm,
-                            child: _RetroRightPanel(data: data, color: accentColor),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // BOTTOM: CONTROLS & TRIPS
-                    Container(
-                      height: 60,
-                      decoration: const BoxDecoration(
-                        border: Border(top: BorderSide(color: Colors.white24, width: 0.5)),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _RetroInfoBox(label: 'TRIP DISTANCE', value: '${data.trip} KM', color: accentColor),
-                          _RetroInfoBox(label: 'ENGINE UPTIME', value: data.engineTime, color: accentColor),
-                          _RetroInfoBox(label: 'BATTERY VOLT', value: '14.2V', color: accentColor),
-                        ],
-                      ),
+                decoration: BoxDecoration(
+                  color: _panelBg,
+                  border: Border.all(color: Colors.white10, width: 1.5),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: accentColor.withOpacity(0.05),
+                      blurRadius: 40,
+                      spreadRadius: 2,
                     ),
                   ],
                 ),
-              ],
+                child: Stack(
+                  children: [
+                    // Scanlines / LCD Grid
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _RetroLcdGridPainter(
+                          color: accentColor.withOpacity(0.03),
+                        ),
+                      ),
+                    ),
+
+                    Column(
+                      children: [
+                        // TOP: HEADER WITH CHROME ACCENT
+                        Container(
+                          height: 40,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.white.withOpacity(0.1),
+                                Colors.transparent,
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                            border: const Border(
+                              bottom: BorderSide(
+                                color: Colors.white24,
+                                width: 0.5,
+                              ),
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'DASHCORE VINTAGE SERIES',
+                                style: TextStyle(
+                                  color: accentColor.withOpacity(0.7),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  _StatusIndicator(
+                                    label: 'READY',
+                                    isActive: true,
+                                    color: Colors.greenAccent,
+                                  ),
+                                  const SizedBox(width: 15),
+                                  _StatusIndicator(
+                                    label: 'BEAM',
+                                    isActive: false,
+                                    color: Colors.blueAccent,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        Expanded(
+                          child: Row(
+                            children: [
+                              // LEFT PANEL: ANALOG-STYLE INDICATORS
+                              _RetroAnalogPanel(data: data, color: accentColor),
+
+                              // CENTER: 3D VIEW & SPEED
+                              Expanded(
+                                flex: 3,
+                                child: _RetroCenterConsole(
+                                  data: data,
+                                  color: accentColor,
+                                ),
+                              ),
+
+                              // RIGHT PANEL: RPM & MISC
+                              RpmWarningAnimation(
+                                rpm: data.rpm,
+                                child: _RetroRightPanel(
+                                  data: data,
+                                  color: accentColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // BOTTOM: CONTROLS & TRIPS
+                        Container(
+                          height: 60,
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              top: BorderSide(
+                                color: Colors.white24,
+                                width: 0.5,
+                              ),
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _RetroInfoBox(
+                                label: 'TRIP DISTANCE',
+                                value: '${data.trip} KM',
+                                color: accentColor,
+                              ),
+                              _RetroInfoBox(
+                                label: 'ENGINE UPTIME',
+                                value: data.engineTime,
+                                color: accentColor,
+                              ),
+                              _RetroInfoBox(
+                                label: 'BATTERY VOLT',
+                                value: '14.2V',
+                                color: accentColor,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       ),
-    ],
-  ),
-);
+    );
   }
 }
 
@@ -157,22 +211,36 @@ class _StatusIndicator extends StatelessWidget {
   final String label;
   final bool isActive;
   final Color color;
-  const _StatusIndicator({required this.label, required this.isActive, required this.color});
+  const _StatusIndicator({
+    required this.label,
+    required this.isActive,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         Container(
-          width: 6, height: 6,
+          width: 6,
+          height: 6,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: isActive ? color : Colors.white10,
-            boxShadow: isActive ? [BoxShadow(color: color.withOpacity(0.5), blurRadius: 4)] : null,
+            boxShadow: isActive
+                ? [BoxShadow(color: color.withOpacity(0.5), blurRadius: 4)]
+                : null,
           ),
         ),
         const SizedBox(width: 6),
-        Text(label, style: TextStyle(color: isActive ? Colors.white70 : Colors.white10, fontSize: 8, fontWeight: FontWeight.bold)),
+        Text(
+          label,
+          style: TextStyle(
+            color: isActive ? Colors.white70 : Colors.white10,
+            fontSize: 8,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ],
     );
   }
@@ -194,8 +262,18 @@ class _RetroAnalogPanel extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _RetroCircularIndicator(label: 'COOLANT', value: data.coolantPercent, color: color, unit: '%'),
-          _RetroCircularIndicator(label: 'FUEL', value: data.fuelLevel / 100, color: color, unit: '%'),
+          _RetroCircularIndicator(
+            label: 'COOLANT',
+            value: data.coolantPercent,
+            color: color,
+            unit: '%',
+          ),
+          _RetroCircularIndicator(
+            label: 'FUEL',
+            value: data.fuelLevel / 100,
+            color: color,
+            unit: '%',
+          ),
         ],
       ),
     );
@@ -208,24 +286,46 @@ class _RetroCircularIndicator extends StatelessWidget {
   final Color color;
   final String unit;
 
-  const _RetroCircularIndicator({required this.label, required this.value, required this.color, required this.unit});
+  const _RetroCircularIndicator({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.unit,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white38,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.5,
+          ),
+        ),
         const SizedBox(height: 10),
         Stack(
           alignment: Alignment.center,
           children: [
             SizedBox(
-              width: 90, height: 90, // Increased size
+              width: 90,
+              height: 90, // Increased size
               child: CustomPaint(
                 painter: _CircularRetroPainter(progress: value, color: color),
               ),
             ),
-            Text('${(value * 100).round()}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, fontFamily: 'monospace')),
+            Text(
+              '${(value * 100).round()}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                fontFamily: 'monospace',
+              ),
+            ),
           ],
         ),
       ],
@@ -250,7 +350,7 @@ class _RetroCenterConsole extends StatelessWidget {
             child: CustomPaint(painter: _RetroPerspectiveGrid(color: color)),
           ),
         ),
-        
+
         Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -258,7 +358,7 @@ class _RetroCenterConsole extends StatelessWidget {
             Expanded(
               child: Consumer<DashSettingsProvider>(
                 builder: (context, settings, _) {
-                  return ModelViewer(
+                  return CompatibleVehicleModel(
                     backgroundColor: Colors.transparent,
                     src: settings.modelPath,
                     alt: "Vehicle",
@@ -267,6 +367,8 @@ class _RetroCenterConsole extends StatelessWidget {
                     disableZoom: true,
                     disablePan: true,
                     cameraOrbit: '180deg 80deg 4.5m',
+                    rearView: true,
+                    defaultZoom: 2.25,
                     exposure: 1.2,
                     loading: Loading.eager,
                     shadowIntensity: 0.1,
@@ -282,10 +384,22 @@ class _RetroCenterConsole extends StatelessWidget {
               children: [
                 Text(
                   data.speed.round().toString(),
-                  style: TextStyle(color: color, fontSize: 80, fontWeight: FontWeight.bold, fontFamily: 'monospace', height: 0.9),
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 80,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'monospace',
+                    height: 0.9,
+                  ),
                 ),
                 const SizedBox(width: 8),
-                Text('KM/H', style: TextStyle(color: color.withOpacity(0.5), fontSize: 20, fontWeight: FontWeight.w900)),
+                SpeedUnitLabel(
+                  style: TextStyle(
+                    color: color.withOpacity(0.5),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 20),
@@ -312,13 +426,29 @@ class _RetroRightPanel extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('RPM ENGINE', style: TextStyle(color: Colors.white38, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 2)),
+          const Text(
+            'RPM ENGINE',
+            style: TextStyle(
+              color: Colors.white38,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+            ),
+          ),
           const SizedBox(height: 15),
           Expanded(
             child: _RetroVerticalVuMeter(value: data.rpm / 8000, color: color),
           ),
           const SizedBox(height: 15),
-          Text(data.rpm.toString(), style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.w900, fontFamily: 'monospace')),
+          Text(
+            data.rpm.toString(),
+            style: TextStyle(
+              color: color,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              fontFamily: 'monospace',
+            ),
+          ),
         ],
       ),
     );
@@ -346,12 +476,14 @@ class _RetroVerticalVuMeter extends StatelessWidget {
               decoration: BoxDecoration(
                 color: isActive ? color : Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(1),
-                boxShadow: isActive ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 2)] : null,
+                boxShadow: isActive
+                    ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 2)]
+                    : null,
               ),
             );
           }),
         );
-      }
+      },
     );
   }
 }
@@ -360,7 +492,11 @@ class _RetroInfoBox extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
-  const _RetroInfoBox({required this.label, required this.value, required this.color});
+  const _RetroInfoBox({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -368,9 +504,25 @@ class _RetroInfoBox extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white24, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 1)),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white24,
+            fontSize: 8,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1,
+          ),
+        ),
         const SizedBox(height: 4),
-        Text(value, style: TextStyle(color: color.withOpacity(0.9), fontSize: 16, fontWeight: FontWeight.w900, fontFamily: 'monospace')),
+        Text(
+          value,
+          style: TextStyle(
+            color: color.withOpacity(0.9),
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            fontFamily: 'monospace',
+          ),
+        ),
       ],
     );
   }
@@ -385,23 +537,44 @@ class _CircularRetroPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = size.center(Offset.zero);
     final radius = size.width / 2;
-    
-    final bgPaint = Paint()..color = Colors.white10..style = PaintingStyle.stroke..strokeWidth = 4;
+
+    final bgPaint = Paint()
+      ..color = Colors.white10
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4;
     canvas.drawCircle(center, radius, bgPaint);
-    
+
     final progressPaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = 6
       ..strokeCap = StrokeCap.butt;
-      
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), -math.pi / 2, 2 * math.pi * progress, false, progressPaint);
-    
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      2 * math.pi * progress,
+      false,
+      progressPaint,
+    );
+
     // Ticks
-    final tickPaint = Paint()..color = Colors.white24..strokeWidth = 1;
+    final tickPaint = Paint()
+      ..color = Colors.white24
+      ..strokeWidth = 1;
     for (int i = 0; i < 12; i++) {
       final angle = (i * 30) * math.pi / 180;
-      canvas.drawLine(Offset(center.dx + (radius - 5) * math.cos(angle), center.dy + (radius - 5) * math.sin(angle)), Offset(center.dx + radius * math.cos(angle), center.dy + radius * math.sin(angle)), tickPaint);
+      canvas.drawLine(
+        Offset(
+          center.dx + (radius - 5) * math.cos(angle),
+          center.dy + (radius - 5) * math.sin(angle),
+        ),
+        Offset(
+          center.dx + radius * math.cos(angle),
+          center.dy + radius * math.sin(angle),
+        ),
+        tickPaint,
+      );
     }
   }
 
@@ -414,24 +587,27 @@ class _RetroPerspectiveGrid extends CustomPainter {
   _RetroPerspectiveGrid({required this.color});
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color.withOpacity(0.3)..strokeWidth = 0.5;
+    final paint = Paint()
+      ..color = color.withOpacity(0.3)
+      ..strokeWidth = 0.5;
     final w = size.width, h = size.height;
-    
+
     // Vanish point
     final vanish = Offset(w / 2, h * 0.2);
-    
+
     // Vertical lines
     for (int i = 0; i <= 20; i++) {
       final x = w * (i / 20);
       canvas.drawLine(Offset(x, h), vanish, paint);
     }
-    
+
     // Horizontal lines
     for (int i = 0; i < 10; i++) {
       final double y = h * (0.2 + 0.8 * math.pow(i / 10, 2));
       canvas.drawLine(Offset(0, y), Offset(w, y), paint);
     }
   }
+
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
@@ -441,7 +617,9 @@ class _RetroLcdGridPainter extends CustomPainter {
   _RetroLcdGridPainter({required this.color});
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color..strokeWidth = 0.5;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 0.5;
     for (double i = 0; i < size.height; i += 4) {
       canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
     }
@@ -449,6 +627,7 @@ class _RetroLcdGridPainter extends CustomPainter {
       canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
     }
   }
+
   @override
   bool shouldRepaint(covariant _RetroLcdGridPainter oldDelegate) => false;
 }

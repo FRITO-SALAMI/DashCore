@@ -1,3 +1,4 @@
+import '../display_units.dart';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -41,7 +42,7 @@ class CustomGaugeWidget extends StatelessWidget {
        isWarning = temp >= settings.tempAlertThreshold;
     } else if (type == 'speed' && settings.speedWarningEnabled) {
        final double speed = value is num ? value.toDouble() : (double.tryParse(value.toString()) ?? 0.0);
-       isWarning = speed >= settings.speedAlertThreshold;
+       isWarning = speed >= settings.displaySpeedAlertThreshold;
     }
 
     if (isWarning) displayColor = Colors.redAccent;

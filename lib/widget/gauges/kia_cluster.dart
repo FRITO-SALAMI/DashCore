@@ -1,3 +1,4 @@
+import '../display_units.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/obd_provider.dart';
@@ -30,7 +31,7 @@ class KiaCluster extends StatelessWidget {
               bottom: 10,
               child: _DigitalSpeedometer(
                 speed: data.speed,
-                unit: 'KM/H',
+                unit: speedUnitOf(context),
                 color: theme.colorScheme.primary,
               ),
             ),

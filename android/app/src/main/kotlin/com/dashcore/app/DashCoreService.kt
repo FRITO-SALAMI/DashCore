@@ -23,11 +23,13 @@ class DashCoreService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "Service onStartCommand")
-        getSharedPreferences("dashcore_persistence", Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean("service_explicitly_stopped", false)
-            .apply()
-
+        val prefs = getSharedPreferences("dashcore_persistence", Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("keep_app_active", false) || prefs.getBoolean("acc_sleeping", false) ||
+            (Build.VERSION.SDK_INT >= 31 && checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) != android.content.pm.PackageManager.PERMISSION_GRANTED)) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        prefs.edit().putBoolean("service_explicitly_stopped", false).apply()
         val notification = createNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
@@ -77,14 +79,14 @@ class DashCoreService : Service() {
         screenStateReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 when (intent.action) {
-                    Intent.ACTION_SCREEN_OFF,
                     Intent.ACTION_POWER_DISCONNECTED,
                     "android.intent.action.QUICKBOOT_POWEROFF" -> {
                         Log.d(TAG, "Screen Off/Power Disconnected - keeping OBD session active")
+                        getSharedPreferences("dashcore_persistence", Context.MODE_PRIVATE).edit().putBoolean("acc_sleeping", true).apply()
+                        releaseWakeLock()
                         notifyFlutterScreenOff()
+                        stopSelf()
                     }
-                    Intent.ACTION_SCREEN_ON,
-                    Intent.ACTION_USER_PRESENT,
                     Intent.ACTION_POWER_CONNECTED,
                     "android.intent.action.QUICKBOOT_POWERON" -> {
                         Log.d(TAG, "Screen On/Power Connected - Restoring app and OBD")
@@ -95,9 +97,6 @@ class DashCoreService : Service() {
             }
         }
         val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_SCREEN_OFF)
-            addAction(Intent.ACTION_SCREEN_ON)
-            addAction(Intent.ACTION_USER_PRESENT)
             addAction(Intent.ACTION_POWER_CONNECTED)
             addAction(Intent.ACTION_POWER_DISCONNECTED)
             addAction("android.intent.action.QUICKBOOT_POWERON")
@@ -138,7 +137,7 @@ class DashCoreService : Service() {
 
     private fun notifyFlutterScreenOn() {
         val intent = Intent("com.dashcore.app.SCREEN_ON")
-        sendBroadcast(intent)
+        sendBroadcast(intent.setPackage(packageName))
     }
 
     private fun notifyFlutterScreenOff() {

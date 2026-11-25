@@ -1,3 +1,4 @@
+import '../display_units.dart';
 import 'dart:math' as math;
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -40,11 +41,7 @@ class HellishRedDashboard extends StatelessWidget {
       duration: const Duration(milliseconds: 300),
       decoration: BoxDecoration(
         color: isCompetitive ? const Color(0xFF500000) : Colors.black,
-        image: DecorationImage(
-          image: bgImage,
-          fit: BoxFit.cover,
-          opacity: 0.9,
-        ),
+        image: DecorationImage(image: bgImage, fit: BoxFit.cover, opacity: 0.9),
       ),
       child: Stack(
         children: [
@@ -52,9 +49,7 @@ class HellishRedDashboard extends StatelessWidget {
           Positioned.fill(
             child: RpmWarningAnimation(
               rpm: rpm,
-              child: CustomPaint(
-                painter: _HellishRpmPainter(rpm: rpm),
-              ),
+              child: CustomPaint(painter: _HellishRpmPainter(rpm: rpm)),
             ),
           ),
 
@@ -71,20 +66,28 @@ class HellishRedDashboard extends StatelessWidget {
                   Text(
                     '$speed',
                     style: TextStyle(
-                      color: isCompetitive ? const Color(0xFFFF1111) : Colors.white,
-                      fontSize: 160,
+                      color: isCompetitive
+                          ? const Color(0xFFFF1111)
+                          : Colors.white,
+                      fontSize: speed >= 100 ? 132 : 160,
                       fontWeight: FontWeight.w900,
                       fontFamily: 'Inter',
                       fontStyle: FontStyle.italic,
                       height: 0.9,
                       shadows: [
-                        Shadow(color: Colors.red.withOpacity(0.8), blurRadius: isCompetitive ? 50 : 20),
-                        const Shadow(color: Colors.black, blurRadius: 10, offset: Offset(5, 5)),
+                        Shadow(
+                          color: Colors.red.withOpacity(0.8),
+                          blurRadius: isCompetitive ? 50 : 20,
+                        ),
+                        const Shadow(
+                          color: Colors.black,
+                          blurRadius: 10,
+                          offset: Offset(5, 5),
+                        ),
                       ],
                     ),
                   ),
-                  const Text(
-                    'KM/H',
+                  const SpeedUnitLabel(
                     style: TextStyle(
                       color: Colors.redAccent,
                       fontSize: 44,
@@ -106,12 +109,19 @@ class HellishRedDashboard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.4),
                 borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.red.withOpacity(0.3), width: 2),
+                border: Border.all(
+                  color: Colors.red.withOpacity(0.3),
+                  width: 2,
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.bolt_rounded, color: Color(0xFFFF1111), size: 60),
+                  const Icon(
+                    Icons.bolt_rounded,
+                    color: Color(0xFFFF1111),
+                    size: 60,
+                  ),
                   const SizedBox(width: 15),
                   Text(
                     voltage.toStringAsFixed(1),
@@ -136,12 +146,19 @@ class HellishRedDashboard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.4),
                 borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.red.withOpacity(0.3), width: 2),
+                border: Border.all(
+                  color: Colors.red.withOpacity(0.3),
+                  width: 2,
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.thermostat_rounded, color: Color(0xFFFF1111), size: 60),
+                  const Icon(
+                    Icons.thermostat_rounded,
+                    color: Color(0xFFFF1111),
+                    size: 60,
+                  ),
                   const SizedBox(width: 15),
                   Text(
                     '$coolantTemp',
@@ -222,7 +239,13 @@ class _HellishRpmPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 40;
 
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), math.pi * 0.7, math.pi * 1.6, false, bgPaint);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      math.pi * 0.7,
+      math.pi * 1.6,
+      false,
+      bgPaint,
+    );
 
     final activePaint = Paint()
       ..shader = const LinearGradient(
@@ -233,16 +256,34 @@ class _HellishRpmPainter extends CustomPainter {
       ..strokeWidth = 50;
 
     if (progress > 0) {
-      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), math.pi * 0.7, math.pi * 1.6 * progress, false, activePaint);
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        math.pi * 0.7,
+        math.pi * 1.6 * progress,
+        false,
+        activePaint,
+      );
     }
 
     // Aggressive Ticks
-    final tickPaint = Paint()..color = Colors.red.withOpacity(0.3)..strokeWidth = 3;
+    final tickPaint = Paint()
+      ..color = Colors.red.withOpacity(0.3)
+      ..strokeWidth = 3;
     for (int i = 0; i <= 16; i++) {
-       final angle = math.pi * 0.7 + (math.pi * 1.6 * (i / 16));
-       final start = center + Offset(math.cos(angle) * (radius - 40), math.sin(angle) * (radius - 40));
-       final end = center + Offset(math.cos(angle) * (radius + 40), math.sin(angle) * (radius + 40));
-       canvas.drawLine(start, end, tickPaint);
+      final angle = math.pi * 0.7 + (math.pi * 1.6 * (i / 16));
+      final start =
+          center +
+          Offset(
+            math.cos(angle) * (radius - 40),
+            math.sin(angle) * (radius - 40),
+          );
+      final end =
+          center +
+          Offset(
+            math.cos(angle) * (radius + 40),
+            math.sin(angle) * (radius + 40),
+          );
+      canvas.drawLine(start, end, tickPaint);
     }
   }
 

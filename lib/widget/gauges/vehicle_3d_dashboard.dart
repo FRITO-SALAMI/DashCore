@@ -1,5 +1,7 @@
+import '../display_units.dart';
+import '../compatible_vehicle_model.dart';
 import 'package:flutter/material.dart';
-import 'package:model_viewer_plus/model_viewer_plus.dart';
+import '../dashboard_background.dart';
 
 class Vehicle3DDashboard extends StatelessWidget {
   final int speed;
@@ -29,80 +31,120 @@ class Vehicle3DDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.black,
-      child: Column(
+      child: Stack(
         children: [
-          // 1. 3D Model (Top Area)
-          Expanded(
-            flex: 5,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                ModelViewer(
-                  key: ValueKey(modelPath),
-                  backgroundColor: Colors.transparent,
-                  src: modelPath,
-                  alt: "Vehicle 3D Model",
-                  ar: false,
-                  autoRotate: false,
-                  cameraControls: true,
-                  disableZoom: false,
-                  disablePan: true,
-                  cameraOrbit: '35deg 75deg 4.2m',
-                  shadowIntensity: 0.1,
-                  exposure: 1.0,
-                  environmentImage: 'neutral',
-                  loading: Loading.eager,
-                ),
-                Positioned(
-                  left: 40, top: 40,
-                  child: _DataTile(label: 'ENGINE THERMAL', value: '$coolantTemp$tempUnit', icon: Icons.thermostat_rounded, accentColor: accentColor, isLarge: true),
-                ),
-                Positioned(
-                  right: 40, top: 40,
-                  child: _DataTile(label: 'BATTERY VOLTS', value: '${voltage.toStringAsFixed(1)}V', icon: Icons.bolt_rounded, accentColor: accentColor, isLarge: true),
-                ),
-              ],
-            ),
+          DashboardBackground(
+            backgroundImage: backgroundImage,
+            isAssetBackground: isAssetBackground,
+            opacity: .34,
           ),
-
-          // 2. Speed Info (Bottom Area)
-          Expanded(
-            flex: 3,
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, accentColor.withOpacity(0.05)],
+          Positioned.fill(
+            child: Column(
+              children: [
+                Expanded(
+                  flex: 5,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CompatibleVehicleModel(
+                        key: ValueKey(modelPath),
+                        backgroundColor: Colors.transparent,
+                        src: modelPath,
+                        alt: "Vehicle 3D Model",
+                        ar: false,
+                        autoRotate: false,
+                        cameraControls: true,
+                        disableZoom: false,
+                        disablePan: true,
+                        cameraOrbit: '35deg 75deg 4.2m',
+                        shadowIntensity: 0.1,
+                        exposure: 1.0,
+                        environmentImage: 'neutral',
+                        loading: Loading.eager,
+                        defaultZoom: 2.15,
+                      ),
+                      Positioned(
+                        left: 40,
+                        top: 40,
+                        child: _DataTile(
+                          label: 'ENGINE THERMAL',
+                          value: '$coolantTemp$tempUnit',
+                          icon: Icons.thermostat_rounded,
+                          accentColor: accentColor,
+                          isLarge: true,
+                        ),
+                      ),
+                      Positioned(
+                        right: 40,
+                        top: 40,
+                        child: _DataTile(
+                          label: 'BATTERY VOLTS',
+                          value: '${voltage.toStringAsFixed(1)}V',
+                          icon: Icons.bolt_rounded,
+                          accentColor: accentColor,
+                          isLarge: true,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '$speed',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 180, // Much larger
-                      fontWeight: FontWeight.w900,
-                      fontStyle: FontStyle.italic,
-                      height: 0.9,
-                      shadows: [Shadow(color: accentColor.withOpacity(0.5), blurRadius: 40)],
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          accentColor.withOpacity(0.05),
+                        ],
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '$speed',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: speed >= 100 ? 145 : 180,
+                            fontWeight: FontWeight.w900,
+                            fontStyle: FontStyle.italic,
+                            height: 0.9,
+                            shadows: [
+                              Shadow(
+                                color: accentColor.withOpacity(0.5),
+                                blurRadius: 40,
+                              ),
+                            ],
+                          ),
+                        ),
+                        SpeedUnitLabel(
+                          style: TextStyle(
+                            color: accentColor,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 12,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'SWIPE TO ROTATE VEHICLE',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white12,
+                            fontSize: 10,
+                            letterSpacing: 2,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Text(
-                    'KM/H',
-                    style: TextStyle(color: accentColor, fontWeight: FontWeight.bold, letterSpacing: 12, fontSize: 18),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'SWIPE TO ROTATE VEHICLE',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white12, fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -118,7 +160,13 @@ class _DataTile extends StatelessWidget {
   final Color accentColor;
   final bool isLarge;
 
-  const _DataTile({required this.label, required this.value, required this.icon, required this.accentColor, this.isLarge = false});
+  const _DataTile({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.accentColor,
+    this.isLarge = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -129,10 +177,25 @@ class _DataTile extends StatelessWidget {
           children: [
             Icon(icon, color: accentColor, size: isLarge ? 24 : 18),
             const SizedBox(width: 8),
-            Text(label, style: TextStyle(color: Colors.white38, fontSize: isLarge ? 14 : 12, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white38,
+                fontSize: isLarge ? 14 : 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
+              ),
+            ),
           ],
         ),
-        Text(value, style: TextStyle(color: Colors.white, fontSize: isLarge ? 56 : 36, fontWeight: FontWeight.w900)),
+        Text(
+          value,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: isLarge ? 56 : 36,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
         Container(width: 100, height: 4, color: accentColor.withOpacity(0.3)),
       ],
     );

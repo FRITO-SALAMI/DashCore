@@ -1,6 +1,7 @@
+import '../../../widget/display_units.dart';
+import '../../../widget/compatible_vehicle_model.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'package:provider/provider.dart';
 import '../../../models/obd_data.dart';
 import '../../../providers/dash_settings_provider.dart';
@@ -61,7 +62,7 @@ class _ClassicSportThemeScreenState extends State<ClassicSportThemeScreen> {
     final isCompetitive = widget.data.rpm > 5000;
 
     final bool isTempWarning = settings.tempWarningEnabled && widget.data.engineTemp >= settings.tempAlertThreshold;
-    final bool isSpeedWarning = settings.speedWarningEnabled && widget.data.speed >= settings.speedAlertThreshold;
+    final bool isSpeedWarning = settings.speedWarningEnabled && widget.data.speed >= settings.displaySpeedAlertThreshold;
 
     final Color displayAccent = isSpeedWarning ? Colors.redAccent : _currentAccent;
     final scale = (isCompetitive || isSpeedWarning) ? 1.15 : 1.1;
@@ -111,7 +112,7 @@ class _ClassicSportThemeScreenState extends State<ClassicSportThemeScreen> {
                               child: SizedBox(
                                 width: constraints.maxWidth * 0.45,
                                 height: constraints.maxHeight * 0.45,
-                                child: ModelViewer(
+                                child: CompatibleVehicleModel(
                                   key: ValueKey(widget.modelPath),
                                   backgroundColor: Colors.transparent,
                                   src: widget.modelPath,
@@ -121,6 +122,7 @@ class _ClassicSportThemeScreenState extends State<ClassicSportThemeScreen> {
                                   disableZoom: true,
                                   disablePan: true,
                                   cameraOrbit: '180deg 75deg 3m',
+                                  rearView: true,
                                   loading: Loading.eager,
                                   exposure: 1.0,
                                   shadowIntensity: 0.1,
@@ -138,7 +140,7 @@ class _ClassicSportThemeScreenState extends State<ClassicSportThemeScreen> {
                                       value: widget.data.speed.toDouble(),
                                       maxValue: widget.maxSpeedKmh,
                                       majorLabels: const ['0', '40', '80', '120', '160', '200', '240', '280', '320'],
-                                      unitLabel: 'km/h',
+                                      unitLabel: speedUnitOf(context),
                                       accentColor: displayAccent,
                                       needleColor: (isCompetitive || isSpeedWarning) ? Colors.white : _red,
                                       innerValue: '${widget.fuelLevel.round()}',
@@ -341,8 +343,7 @@ class _CenterReadout extends StatelessWidget {
           ),
           child: Text(speedKmh.round().toString()),
         ),
-        const Text(
-          'km/h',
+        const SpeedUnitLabel(
           style: TextStyle(color: Color(0xFF7C8790), fontSize: 14, fontWeight: FontWeight.bold),
         ),
       ],

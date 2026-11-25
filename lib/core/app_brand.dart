@@ -3,10 +3,10 @@ class AppBrand {
   static const String tagline = 'DRIVE SMARTER';
 
   static const String logoAsset =
-      'assets/icons/dashcore_logo.png';
+      'assets/icons/dashcore_v2.png';
 
   static const String iconAsset =
-      'assets/icons/dashcore_logo.png';
+      logoAsset;
 
   static const String fontFamily = 'Inter';
 

@@ -199,6 +199,13 @@ class HiddenMenuOverlay extends StatelessWidget {
                                 ),
 
                                 _SideMenuItem(
+                                  icon: Icons.garage_outlined,
+                                  label: 'MI GARAJE',
+                                  isSelected: currentIndex == 8,
+                                  onTap: () { onItemSelected(8); onClose(); },
+                                ),
+
+                                _SideMenuItem(
                                   key: TutorialKeys.settingsMenuEntryKey,
                                   icon:
                                   'assets/images/svg/dashboard/settings.svg',

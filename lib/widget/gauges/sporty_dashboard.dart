@@ -1,7 +1,9 @@
+import '../display_units.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../rpm_warning_animation.dart';
 import '../dashboard_background.dart';
+import '../tutorial/tutorial_keys.dart';
 
 class SportyDashboard extends StatelessWidget {
   final int speed;
@@ -50,7 +52,9 @@ class SportyDashboard extends StatelessWidget {
                 left: -sideGaugeSize * 0.2,
                 child: Opacity(
                   opacity: 0.8,
-                  child: _CircularSideGauge(
+                  child: KeyedSubtree(
+                    key: TutorialKeys.temperatureGaugeKey,
+                    child: _CircularSideGauge(
                     size: sideGaugeSize,
                     value: coolantTemp.toDouble(),
                     maxValue: tempUnit == '°C' ? 130 : 250,
@@ -58,6 +62,7 @@ class SportyDashboard extends StatelessWidget {
                     unit: tempUnit,
                     accentColor: Colors.cyanAccent,
                     icon: Icons.thermostat,
+                    ),
                   ),
                 ),
               ),
@@ -67,7 +72,9 @@ class SportyDashboard extends StatelessWidget {
                 right: -sideGaugeSize * 0.2,
                 child: Opacity(
                   opacity: 0.8,
-                  child: _CircularSideGauge(
+                  child: KeyedSubtree(
+                    key: TutorialKeys.voltageGaugeKey,
+                    child: _CircularSideGauge(
                     size: sideGaugeSize,
                     value: voltage,
                     maxValue: 16,
@@ -76,6 +83,7 @@ class SportyDashboard extends StatelessWidget {
                     unit: 'V',
                     accentColor: Colors.orangeAccent,
                     icon: Icons.bolt,
+                    ),
                   ),
                 ),
               ),
@@ -87,7 +95,9 @@ class SportyDashboard extends StatelessWidget {
                   child: AnimatedScale(
                     duration: const Duration(milliseconds: 200),
                     scale: isCompetitive ? 1.05 : 1.0,
-                    child: SizedBox(
+                    child: KeyedSubtree(
+                      key: TutorialKeys.speedGaugeKey,
+                      child: SizedBox(
                       width: mainGaugeSize,
                       height: mainGaugeSize,
                       child: Stack(
@@ -120,8 +130,7 @@ class SportyDashboard extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              Text(
-                                'KM/H',
+                              SpeedUnitLabel(
                                 style: TextStyle(
                                   color: Colors.white38,
                                   fontSize: mainGaugeSize * 0.04,
@@ -141,6 +150,7 @@ class SportyDashboard extends StatelessWidget {
                             ],
                           ),
                         ],
+                      ),
                       ),
                     ),
                   ),

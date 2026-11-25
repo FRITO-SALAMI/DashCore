@@ -1,159 +1,140 @@
-import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../music_hub.dart';
-import 'package:video_player/video_player.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
+import 'package:video_player/video_player.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
-import '../../providers/obd_provider.dart';
-import '../../providers/music_provider.dart';
-import '../../providers/dash_settings_provider.dart';
+import '../../models/gadget_config.dart';
 import '../../models/obd_data.dart';
+import '../../providers/dash_settings_provider.dart';
+import '../display_units.dart';
 import '../dashboard_background.dart';
+import '../editable_gadget_wrapper.dart';
 
+/// YouTube remains inside this dedicated style. The WebView is destroyed when
+/// the user changes style, so it never competes with a GLB renderer.
 class PremiumDashboard extends StatefulWidget {
+  const PremiumDashboard({
+    super.key,
+    required this.data,
+    required this.fuelLevel,
+  });
+
   final ObdData data;
   final double fuelLevel;
 
-  const PremiumDashboard({super.key, required this.data, required this.fuelLevel});
-  @override State<PremiumDashboard> createState() => _PremiumDashboardState();
+  @override
+  State<PremiumDashboard> createState() => _PremiumDashboardState();
 }
 
 class _PremiumDashboardState extends State<PremiumDashboard> {
-  bool _isYoutubeMode = true;
-  WebViewController? _webController;
-  VideoPlayerController? _localController;
-  List<String> _videoPaths = [];
-  int _currentVideoIndex = -1;
-  bool _isFullScreen = false;
-  bool _hasWebError = false;
-  String _currentVideoId = 'https://www.youtube.com/@DashcoreTeam'; // Default channel URL
-
-  final RegExp _youtubeIdRegex = RegExp(r'^[a-zA-Z0-9_-]{11}$');
+  late final WebViewController _youtube;
+  int _loading = 0;
 
   @override
   void initState() {
     super.initState();
-    _initWebView();
-    _loadPlaylist();
-  }
-
-  void _initWebView() {
-    String finalUrl;
-    if (_youtubeIdRegex.hasMatch(_currentVideoId)) {
-      finalUrl = 'https://www.youtube.com/embed/$_currentVideoId?autoplay=1&modestbranding=1&rel=0&controls=1';
-    } else if (_currentVideoId.startsWith('http')) {
-      finalUrl = _currentVideoId;
-    } else {
-      debugPrint('⚠️ Invalid YouTube reference: $_currentVideoId');
-      _hasWebError = true;
-      return;
-    }
-
-    _webController = WebViewController()
+    _youtube = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0x00000000))
+      ..setBackgroundColor(const Color(0xFF080D14))
       ..setNavigationDelegate(
         NavigationDelegate(
-          onWebResourceError: (error) {
-            if (mounted) setState(() => _hasWebError = true);
+          onProgress: (value) {
+            if (mounted) setState(() => _loading = value);
+          },
+          onNavigationRequest: (request) {
+            final uri = Uri.tryParse(request.url);
+            if (uri == null) return NavigationDecision.prevent;
+            return uri.scheme == 'http' || uri.scheme == 'https'
+                ? NavigationDecision.navigate
+                : NavigationDecision.prevent;
           },
         ),
       )
-      ..loadRequest(Uri.parse(finalUrl));
-  }
-
-  void _openInYoutube() async {
-    Uri url;
-    if (_youtubeIdRegex.hasMatch(_currentVideoId)) {
-      url = Uri.parse('https://www.youtube.com/watch?v=$_currentVideoId');
-    } else if (_currentVideoId.startsWith('http')) {
-      url = Uri.parse(_currentVideoId);
-    } else {
-      return;
-    }
-
-    if (await url_launcher.launchUrl(url, mode: url_launcher.LaunchMode.externalApplication)) {
-      // Success
-    }
-  }
-
-  Future<void> _loadPlaylist() async {
-    final prefs = await SharedPreferences.getInstance();
-    final paths = prefs.getStringList('premium_playlist') ?? [];
-    final List<String> existing = [];
-    for (final p in paths) { if (await File(p).exists()) existing.add(p); }
-    if (mounted) { setState(() { _videoPaths = existing; if (_videoPaths.isNotEmpty) _playLocalVideo(0); }); }
-  }
-
-  void _playLocalVideo(int index) {
-    if (index < 0 || index >= _videoPaths.length) return;
-    setState(() {
-      _currentVideoIndex = index;
-      _localController?.dispose();
-      _localController = VideoPlayerController.file(File(_videoPaths[index]))..initialize().then((_) { if (mounted) { setState(() {}); _localController?.play(); _localController?.setLooping(true); } });
-    });
-  }
-
-  @override
-  void dispose() {
-    _localController?.dispose();
-    _webController?.loadRequest(Uri.parse('about:blank')); // Clear memory
-    super.dispose();
+      ..loadRequest(Uri.parse('https://m.youtube.com/@DashcoreTeam/videos'));
   }
 
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<DashSettingsProvider>();
-    final accentColor = settings.accentColor;
-
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
-        children: [
-          if (settings.backgroundImage != null && settings.backgroundImage != 'COLOR_BLACK')
-            Positioned.fill(child: DashboardBackground(backgroundImage: settings.backgroundImage, isAssetBackground: settings.isAssetBackground, opacity: 0.2)),
-
-          Row(
+    final accent = settings.accentColor;
+    return Stack(
+      children: [
+        DashboardBackground(
+          backgroundImage: settings.backgroundImage,
+          isAssetBackground: settings.isAssetBackground,
+          opacity: .22,
+        ),
+        Positioned.fill(
+          child: Row(
             children: [
-              if (!_isFullScreen)
-                Expanded(
-                  flex: 5,
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        Expanded(flex: 6, child: _buildSpeedometer(accentColor)),
-                        const SizedBox(height: 20),
-                        Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [_miniInfo(Icons.bolt_rounded, '${widget.data.voltage.toStringAsFixed(1)}V', 'VOLT', accentColor), _miniInfo(Icons.thermostat_rounded, '${widget.data.engineTemp}°C', 'TEMP', accentColor), _miniInfo(Icons.local_gas_station_rounded, '${widget.fuelLevel.round()}%', 'FUEL', accentColor)]),
-                        const Spacer(),
-                        MusicHub(accentColor: accentColor, width: 300),
-                      ],
-                    ),
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${widget.data.speed}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 120,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      SpeedUnitLabel(
+                        style: TextStyle(
+                          color: accent,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 5,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _metric(
+                            Icons.thermostat_rounded,
+                            '${widget.data.engineTemp}°C',
+                            accent,
+                          ),
+                          const SizedBox(width: 35),
+                          _metric(
+                            Icons.bolt_rounded,
+                            '${widget.data.voltage.toStringAsFixed(1)}V',
+                            Colors.orangeAccent,
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-
+              ),
               Expanded(
-                flex: 6,
-                child: Container(
-                  margin: _isFullScreen ? EdgeInsets.zero : const EdgeInsets.fromLTRB(0, 10, 10, 10),
-                  decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(_isFullScreen ? 0 : 20), border: _isFullScreen ? null : Border.all(color: Colors.white10)),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(_isFullScreen ? 0 : 20),
-                    child: Column(
+                child: Center(
+                  child: Container(
+                    margin: const EdgeInsets.all(28),
+                    width: double.infinity,
+                    height: double.infinity,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF080D14),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Stack(
                       children: [
-                        Expanded(
-                          child: _isYoutubeMode
-                            ? (_hasWebError
-                                ? _buildWebErrorFallback(accentColor)
-                                : WebViewWidget(controller: _webController!))
-                            : _buildLocalPlayerArea(accentColor)
+                        Positioned.fill(
+                          child: WebViewWidget(controller: _youtube),
                         ),
-                        _buildVideoControls(settings, accentColor),
+                        if (_loading < 100)
+                          LinearProgressIndicator(
+                            value: _loading == 0 ? null : _loading / 100,
+                            color: Colors.redAccent,
+                            backgroundColor: Colors.transparent,
+                          ),
                       ],
                     ),
                   ),
@@ -161,90 +142,356 @@ class _PremiumDashboardState extends State<PremiumDashboard> {
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildWebErrorFallback(Color accent) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline_rounded, color: Colors.white24, size: 40),
-          const SizedBox(height: 10),
-          const Text('VIDEO NO DISPONIBLE EN MODO EMBED', style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 15),
-          ElevatedButton.icon(
-            onPressed: _openInYoutube,
-            icon: const Icon(Icons.open_in_new_rounded, size: 16),
-            label: const Text('ABRIR EN YOUTUBE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-            style: ElevatedButton.styleFrom(backgroundColor: accent, foregroundColor: Colors.black),
+  Widget _metric(IconData icon, String value, Color color) => Container(
+    width: 132,
+    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+    decoration: BoxDecoration(
+      color: const Color(0xCC080D14),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: color.withOpacity(.45), width: 1.5),
+      boxShadow: [BoxShadow(color: color.withOpacity(.16), blurRadius: 18)],
+    ),
+    child: Column(
+      children: [
+        Icon(icon, color: color, size: 30),
+        const SizedBox(height: 5),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 25,
+            fontWeight: FontWeight.w900,
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLocalPlayerArea(Color accent) {
-    return _localController != null && _localController!.value.isInitialized
-        ? Center(child: AspectRatio(aspectRatio: _localController!.value.aspectRatio, child: VideoPlayer(_localController!)))
-        : Center(child: Icon(Icons.video_library_rounded, size: 60, color: Colors.white12));
-  }
-
-  Widget _buildVideoControls(DashSettingsProvider settings, Color accent) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      color: Colors.black,
-      child: Row(
-        children: [
-          IconButton(
-            icon: Icon(_isYoutubeMode ? Icons.refresh_rounded : (_localController?.value.isPlaying ?? false ? Icons.pause_rounded : Icons.play_arrow_rounded), color: Colors.white, size: 18),
-            onPressed: () {
-              if (_isYoutubeMode) {
-                setState(() => _hasWebError = false);
-                _webController?.reload();
-              } else {
-                setState(() {
-                  if (_localController?.value.isPlaying ?? false) _localController?.pause();
-                  else _localController?.play();
-                });
-              }
-            }
-          ),
-          const Spacer(),
-          GestureDetector(
-            onTap: () => setState(() {
-              _isYoutubeMode = !_isYoutubeMode;
-              if (_isYoutubeMode) {
-                _localController?.pause();
-                if (_youtubeIdRegex.hasMatch(_currentVideoId)) {
-                  _webController?.loadRequest(Uri.parse('https://www.youtube.com/embed/$_currentVideoId?autoplay=1&modestbranding=1&rel=0&controls=1'));
-                } else {
-                  _hasWebError = true;
-                }
-              } else {
-                _webController?.loadRequest(Uri.parse('about:blank'));
-              }
-            }),
-            child: Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: accent.withOpacity(0.1), borderRadius: BorderRadius.circular(6)), child: Text(_isYoutubeMode ? 'YOUTUBE' : 'LOCAL', style: TextStyle(color: accent, fontSize: 8, fontWeight: FontWeight.bold))),
-          ),
-          IconButton(icon: Icon(_isFullScreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded, color: Colors.white38, size: 18), onPressed: () => setState(() => _isFullScreen = !_isFullScreen)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSpeedometer(Color accent) => Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text('${widget.data.speed}', style: const TextStyle(color: Colors.white, fontSize: 100, fontWeight: FontWeight.w900, height: 1)), Text('KM/H', style: TextStyle(color: accent, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 4))]));
-  Widget _miniInfo(IconData i, String v, String l, Color a) => Column(children: [Icon(i, color: Colors.white24, size: 22), Text(v, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)), Text(l, style: const TextStyle(color: Colors.white24, fontSize: 7, fontWeight: FontWeight.bold))]);
+        ),
+      ],
+    ),
+  );
 }
 
-class _PremiumMusicHub extends StatelessWidget {
-  final double maxWidth;
-  const _PremiumMusicHub({required this.maxWidth});
+/// Video is isolated in this dashboard so its decoder never competes with a
+/// GLB renderer or an animated background on low-memory/32-bit devices.
+class Mp4Dashboard extends StatefulWidget {
+  const Mp4Dashboard({super.key, required this.data, required this.fuelLevel});
+
+  final ObdData data;
+  final double fuelLevel;
+
+  @override
+  State<Mp4Dashboard> createState() => _Mp4DashboardState();
+}
+
+class _Mp4DashboardState extends State<Mp4Dashboard> {
+  static const _maxLoopDuration = Duration(seconds: 30);
+  VideoPlayerController? _video;
+  String? _loadedPath;
+  String? _videoError;
+  int _videoGeneration = 0;
+  Future<void> _videoWork = Future.value();
+  bool _restartingVideo = false;
+
+  final Map<String, GadgetConfig> _gadgets = {
+    'speed': GadgetConfig(
+      id: 'speed',
+      label: 'VELOCIDAD',
+      relativeX: .03,
+      relativeY: .08,
+      relativeWidth: .30,
+      relativeHeight: .48,
+    ),
+    'sensors': GadgetConfig(
+      id: 'sensors',
+      label: 'TEMP / VOLT',
+      relativeX: .03,
+      relativeY: .60,
+      relativeWidth: .30,
+      relativeHeight: .25,
+    ),
+    'video': GadgetConfig(
+      id: 'video',
+      label: 'VIDEO',
+      relativeX: .37,
+      relativeY: .06,
+      relativeWidth: .60,
+      relativeHeight: .82,
+    ),
+  };
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final settings = Provider.of<DashSettingsProvider>(context);
+    final path = settings.isAppActive ? settings.selectedVideoPath : null;
+    if (path == _loadedPath) return;
+    _loadedPath = path;
+    final generation = ++_videoGeneration;
+    _videoWork = _videoWork.then((_) => _loadVideo(path, generation));
+  }
+
+  bool _current(int generation) => mounted && generation == _videoGeneration;
+
+  Future<void> _loadVideo(String? path, int generation) async {
+    if (!_current(generation)) return;
+    final previous = _video;
+    if (previous != null) {
+      previous.removeListener(_limitPlayback);
+      setState(() => _video = null);
+    }
+    VideoPlayerController? pending;
+    try {
+      await previous?.dispose();
+      if (!_current(generation)) return;
+      if (path == null || path.isEmpty || !await File(path).exists()) {
+        if (_current(generation)) {
+          setState(() => _videoError = 'SELECCIONA UN VIDEO EN LA TIENDA');
+        }
+        return;
+      }
+      if (!_current(generation)) return;
+      final controller = VideoPlayerController.file(
+        File(path),
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+      );
+      pending = controller;
+      await controller.initialize().timeout(const Duration(seconds: 8));
+      if (!_current(generation)) return;
+      await controller.setVolume(0);
+      await controller.setLooping(false);
+      if (!_current(generation)) return;
+      await controller.play();
+      if (!_current(generation)) return;
+      controller.addListener(_limitPlayback);
+      setState(() {
+        _video = controller;
+        _videoError = null;
+      });
+      pending = null;
+    } catch (_) {
+      if (_current(generation)) {
+        setState(() => _videoError = 'MP4 NO COMPATIBLE. USA H.264 · 720P');
+      }
+    } finally {
+      try {
+        await pending?.dispose();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _limitPlayback() async {
+    final controller = _video;
+    if (_restartingVideo || controller == null || !controller.value.isInitialized) return;
+    final duration = controller.value.duration < _maxLoopDuration
+        ? controller.value.duration
+        : _maxLoopDuration;
+    if (duration > Duration.zero && controller.value.position >= duration) {
+      _restartingVideo = true;
+      try {
+        await controller.seekTo(Duration.zero);
+        if (mounted && identical(_video, controller)) await controller.play();
+      } catch (_) {
+        // The player can be disposed while a seek is in flight.
+      } finally {
+        _restartingVideo = false;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _videoGeneration++;
+    _video?.removeListener(_limitPlayback);
+    _video?.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final music = context.watch<MusicProvider>();
-    return Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), decoration: BoxDecoration(color: Colors.white.withOpacity(0.02), borderRadius: BorderRadius.circular(16)), child: Row(children: [const Icon(Icons.music_note_rounded, color: Color(0xFF00E5FF), size: 16), const SizedBox(width: 8), Expanded(child: Text(music.trackTitle, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))), IconButton(onPressed: music.playPause, icon: Icon(music.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.white, size: 20))]));
+    final settings = context.watch<DashSettingsProvider>();
+    final accent = settings.accentColor;
+    return ColoredBox(
+      color: const Color(0xFF020408),
+      child: LayoutBuilder(
+        builder: (context, bounds) => Stack(
+          children: _gadgets.values.map((config) {
+            return Positioned(
+              left: config.relativeX * bounds.maxWidth,
+              top: config.relativeY * bounds.maxHeight,
+              width: config.relativeWidth * bounds.maxWidth,
+              height: config.relativeHeight * bounds.maxHeight,
+              child: EditableGadgetWrapper(
+                config: config,
+                isEditMode: settings.isEditMode,
+                parentSize: Size(bounds.maxWidth, bounds.maxHeight),
+                onTapEdit: () {},
+                onConfigChanged: (updated) =>
+                    setState(() => _gadgets[updated.id] = updated),
+                child: _panel(config.id, accent, settings),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
   }
+
+  Widget _panel(String id, Color accent, DashSettingsProvider settings) {
+    switch (id) {
+      case 'speed':
+        return _glass(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${widget.data.speed}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 120,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                SpeedUnitLabel(
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      case 'sensors':
+        return _glass(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _metric(
+                Icons.thermostat_rounded,
+                '${widget.data.engineTemp}°C',
+                'TEMP',
+                accent,
+              ),
+              _metric(
+                Icons.bolt_rounded,
+                '${widget.data.voltage.toStringAsFixed(1)}V',
+                'VOLT',
+                Colors.orangeAccent,
+              ),
+            ],
+          ),
+        );
+      default:
+        return _videoPanel(accent, settings);
+    }
+  }
+
+  Widget _videoPanel(Color accent, DashSettingsProvider settings) {
+    final controller = _video;
+    return _glass(
+      padding: 0,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (controller != null && controller.value.isInitialized)
+            Center(
+              child: AspectRatio(
+                aspectRatio: controller.value.aspectRatio,
+                child: VideoPlayer(controller),
+              ),
+            )
+          else
+            Center(
+              child: Text(
+                _videoError ?? 'PREPARANDO VIDEO…',
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          Positioned(
+            left: 8,
+            right: 8,
+            bottom: 6,
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: controller == null
+                      ? null
+                      : () => setState(() {
+                          controller.value.isPlaying
+                              ? controller.pause()
+                              : controller.play();
+                        }),
+                  icon: Icon(
+                    controller?.value.isPlaying == true
+                        ? Icons.pause_rounded
+                        : Icons.play_arrow_rounded,
+                  ),
+                ),
+                const Text(
+                  'CICLO OPTIMIZADO · MÁX. 30 S',
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: _openYoutubeLite,
+                  icon: const Icon(Icons.open_in_new_rounded, size: 14),
+                  label: const Text('YOUTUBE LITE'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openYoutubeLite() => url_launcher.launchUrl(
+    Uri.parse('https://m.youtube.com/@DashcoreTeam'),
+    mode: url_launcher.LaunchMode.externalApplication,
+  );
+
+  Widget _glass({required Widget child, double padding = 12}) => Container(
+    padding: EdgeInsets.all(padding),
+    decoration: BoxDecoration(
+      color: const Color(0xFF080D14),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: Colors.white12),
+    ),
+    child: child,
+  );
+
+  Widget _metric(IconData icon, String value, String label, Color color) =>
+      FittedBox(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 22),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 25,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white38, fontSize: 9),
+            ),
+          ],
+        ),
+      );
 }

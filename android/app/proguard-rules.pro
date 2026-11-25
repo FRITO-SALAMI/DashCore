@@ -14,7 +14,11 @@
 
 # Preserve Supabase / Postgrest classes if needed (already handled by their own consumer rules usually)
 -keep class com.supabase.** { *; }
+-keep class ai.onnxruntime.** { *; }
 
-# Google Play Core rules
--keep class com.google.android.play.core.** { *; }
+# Flutter conserva referencias opcionales a la API antigua de Tasks cuando no
+# se utilizan módulos diferidos. Feature Delivery moderno cubre SplitInstall.
+-dontwarn com.google.android.play.core.tasks.OnFailureListener
+-dontwarn com.google.android.play.core.tasks.OnSuccessListener
+-dontwarn com.google.android.play.core.tasks.Task
 

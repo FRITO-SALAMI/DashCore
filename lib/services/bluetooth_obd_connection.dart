@@ -1,5 +1,7 @@
 import '../providers/bluetooth_provider.dart';
 import 'obd_connection.dart';
+import '../models/obd_device.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class BluetoothObdConnection implements ObdConnection {
   final BluetoothProvider provider;
@@ -22,7 +24,13 @@ class BluetoothObdConnection implements ObdConnection {
 
   @override
   Future<void> connect() async {
-    // La conexión Bluetooth es gestionada por BluetoothProvider.
+    final prefs = await SharedPreferences.getInstance();
+    final address = prefs.getString('last_obd_address');
+    if (address == null) throw StateError('No hay un dispositivo OBD guardado');
+    final connected = await provider.connectToDevice(ObdDevice(
+      name: prefs.getString('last_obd_name') ?? 'OBD', address: address, isBle: false,
+    ), maxAttempts: 1);
+    if (!connected) throw StateError('No se pudo reconectar Bluetooth');
   }
 
   @override

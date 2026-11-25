@@ -1,3 +1,4 @@
+import '../display_units.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -88,7 +89,7 @@ class _NeonWorldDashboardState extends State<NeonWorldDashboard>
 
     // Warning states
     final bool isTempWarning = settings.tempWarningEnabled && widget.coolantTemp >= settings.tempAlertThreshold;
-    final bool isSpeedWarning = settings.speedWarningEnabled && widget.speed >= settings.speedAlertThreshold;
+    final bool isSpeedWarning = settings.speedWarningEnabled && widget.speed >= settings.displaySpeedAlertThreshold;
 
     return Container(
       color: const Color(0xFF05000A),
@@ -1009,7 +1010,7 @@ class _NeonSpeedometerState extends State<_NeonSpeedometer> with SingleTickerPro
                             fontSize: widget.isWarning ? 94 : 84,
                             fontWeight: FontWeight.w900,
                             height: 1)),
-                    Text('KM/H',
+                    SpeedUnitLabel(
                         style: TextStyle(
                             color: displayColor.withOpacity(0.5),
                             fontSize: 14,

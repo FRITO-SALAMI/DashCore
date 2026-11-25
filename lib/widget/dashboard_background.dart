@@ -1,5 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../providers/dash_settings_provider.dart';
 
 class DashboardBackground extends StatelessWidget {
   final String? backgroundImage;
@@ -17,10 +20,19 @@ class DashboardBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     final image = backgroundImage;
 
-    if (image == null ||
-        image.isEmpty ||
-        image == 'COLOR_BLACK') {
+    if (image == null || image.isEmpty || image == 'COLOR_BLACK') {
       return const SizedBox.shrink();
+    }
+
+    if (image == 'CARBON_LOCAL' || image == 'STARS_LOCAL') {
+      return Positioned.fill(
+        child: Opacity(
+          opacity: opacity.clamp(0.0, 1.0),
+          child: RepaintBoundary(
+            child: CustomPaint(painter: _LocalTexture(image == 'STARS_LOCAL')),
+          ),
+        ),
+      );
     }
 
     if (image == 'DARK_TENUE') {
@@ -28,10 +40,7 @@ class DashboardBackground extends StatelessWidget {
         child: Container(
           decoration: const BoxDecoration(
             gradient: RadialGradient(
-              colors: [
-                Color(0xCC000000),
-                Color(0xFF000000),
-              ],
+              colors: [Color(0xCC000000), Color(0xFF000000)],
               radius: 1.5,
             ),
           ),
@@ -39,77 +48,89 @@ class DashboardBackground extends StatelessWidget {
       );
     }
 
+    // MP4 is intentionally restricted to the DashCore Video style. Decoding
+    // it behind 3D/animated dashboards exhausts GPU memory on 32-bit devices.
+    if (_isVideo(image)) return const SizedBox.shrink();
+
     return Positioned.fill(
       child: Opacity(
         opacity: opacity.clamp(0.0, 1.0),
-        child: _buildImage(image),
+        child: _buildImage(context, image),
       ),
     );
   }
 
-  Widget _buildImage(String image) {
-    if (isAssetBackground) {
-      return Image.asset(
-        image,
-        key: ValueKey('gif_asset_$image'),
+  bool _isVideo(String path) {
+    final value = path.toLowerCase();
+    return value.endsWith('.mp4') ||
+        value.endsWith('.webm') ||
+        value.endsWith('.mov');
+  }
+
+  Widget _buildImage(BuildContext context, String image) {
+    final lowResource = context.select<DashSettingsProvider?, bool>(
+      (settings) => settings?.isLowResourceDevice ?? false,
+    );
+    final reduceMotion =
+        context.select<DashSettingsProvider?, bool>(
+          (settings) => settings?.reduceMotion ?? false,
+        ) ||
+        MediaQuery.disableAnimationsOf(context);
+    final uri = Uri.tryParse(image);
+    final ImageProvider source = isAssetBackground
+        ? AssetImage(image)
+        : uri?.scheme == 'http' || uri?.scheme == 'https'
+        ? NetworkImage(image)
+        : FileImage(uri?.scheme == 'file' ? File.fromUri(uri!) : File(image));
+    return TickerMode(
+      enabled: !reduceMotion,
+      child: Image(
+        image: ResizeImage(
+          source,
+          width: lowResource ? 960 : 1440,
+          height: lowResource ? 540 : 900,
+          policy: ResizeImagePolicy.fit,
+        ),
         fit: BoxFit.cover,
-        alignment: Alignment.center,
         filterQuality: FilterQuality.low,
-        gaplessPlayback: true,
         excludeFromSemantics: true,
-        errorBuilder: (context, error, stackTrace) {
-          debugPrint(
-            'DashCore Asset Error: $image\n$error',
-          );
-
-          return const SizedBox.expand(
-            child: ColoredBox(
-              color: Colors.black,
-            ),
-          );
-        },
-      );
-    }
-
-    if (image.startsWith('http://') ||
-        image.startsWith('https://')) {
-      return Image.network(
-        image,
-        key: ValueKey('gif_network_$image'),
-        fit: BoxFit.cover,
-        alignment: Alignment.center,
-        filterQuality: FilterQuality.low,
-        gaplessPlayback: true,
-        excludeFromSemantics: true,
-        errorBuilder: (context, error, stackTrace) {
-          debugPrint(
-            'DashCore Network Background Error: $image\n$error',
-          );
-
-          return const SizedBox.shrink();
-        },
-      );
-    }
-
-    final filePath = image.startsWith('file://')
-        ? image.substring(7)
-        : image;
-
-    return Image.file(
-      File(filePath),
-      key: ValueKey('gif_file_$filePath'),
-      fit: BoxFit.cover,
-      alignment: Alignment.center,
-      filterQuality: FilterQuality.low,
-      gaplessPlayback: true,
-      excludeFromSemantics: true,
-      errorBuilder: (context, error, stackTrace) {
-        debugPrint(
-          'DashCore File Background Error: $filePath\n$error',
-        );
-
-        return const SizedBox.shrink();
-      },
+        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+      ),
     );
   }
+}
+
+class _LocalTexture extends CustomPainter {
+  const _LocalTexture(this.stars);
+  final bool stars;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF94AABE)
+      ..strokeWidth = 1;
+    if (stars) {
+      for (var i = 0; i < 80; i++) {
+        canvas.drawCircle(
+          Offset(
+            (i * 137.51 % 997) / 997 * size.width,
+            (i * 83.17 % 503) / 503 * size.height,
+          ),
+          i % 9 == 0 ? 1.5 : .7,
+          paint,
+        );
+      }
+    } else {
+      for (double x = -size.height; x < size.width; x += 12) {
+        canvas.drawLine(
+          Offset(x, size.height),
+          Offset(x + size.height, 0),
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _LocalTexture oldDelegate) =>
+      stars != oldDelegate.stars;
 }

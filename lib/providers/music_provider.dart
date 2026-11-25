@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nowplaying/nowplaying.dart';
@@ -22,28 +21,38 @@ class MusicProvider extends ChangeNotifier {
   Uint8List? _artwork;
   bool _isPlaying = false;
   double _progress = 0.0;
+  double _position = 0, _duration = 0, _speed = 1;
+  final Stopwatch _elapsed = Stopwatch();
   bool _hasActiveSession = false;
 
   Timer? _progressTimer;
+  int _progressConsumers = 0;
 
   bool get hasActiveSession => _hasActiveSession;
   bool get isPlaying => _isPlaying;
   double get progress => _progress;
+  Duration get position => Duration(milliseconds: (_position + (_isPlaying ? _elapsed.elapsedMilliseconds * _speed : 0)).clamp(0, _duration > 0 ? _duration : double.infinity).round());
+  Duration get duration => Duration(milliseconds: _duration.round());
   Uint8List? get nativeArtwork => _artwork;
 
   String get trackTitle {
-    if (_hasActiveSession && _title != null && _title!.isNotEmpty) return _title!;
+    if (_hasActiveSession && _title != null && _title!.isNotEmpty) {
+      return _title!;
+    }
     return 'SIN MÚSICA';
   }
 
   String get artistName {
-    if (_hasActiveSession && _artist != null && _artist!.isNotEmpty) return _artist!;
+    if (_hasActiveSession && _artist != null && _artist!.isNotEmpty) {
+      return _artist!;
+    }
     return 'DashCore Audio';
   }
 
   MusicProvider() {
     _initNativeMediaListener();
     _checkPermissionStatus();
+    refresh();
   }
 
   void _initNativeMediaListener() {
@@ -87,8 +96,16 @@ class MusicProvider extends ChangeNotifier {
       return;
     }
 
+    if (_title != title) {
+      _position = 0;
+      _duration = 0;
+      _progress = 0;
+      _elapsed.reset();
+    }
     _title = title;
-    _artist = (artist == null || artist.isEmpty || artist == 'null') ? null : artist;
+    _artist = (artist == null || artist.isEmpty || artist == 'null')
+        ? null
+        : artist;
     _hasActiveSession = true;
 
     if (artworkBase64 != null) {
@@ -108,10 +125,18 @@ class MusicProvider extends ChangeNotifier {
   void _updateFromNativePlaybackState(dynamic args) {
     if (args is! Map) return;
 
-    final isPlaying = args['isPlaying'] as bool? ?? false;
-    final duration = (args['duration'] as num?)?.toDouble() ?? 0.0;
-    final position = (args['position'] as num?)?.toDouble() ?? 0.0;
+    final isPlaying = args['isPlaying'] as bool? ?? _isPlaying;
+    final duration = (args['duration'] as num?)?.toDouble() ?? _duration;
+    final position =
+        (args['position'] as num?)?.toDouble() ??
+        (_position + (_isPlaying ? _elapsed.elapsedMilliseconds * _speed : 0));
 
+    _position = position;
+    _duration = duration;
+    _speed = (args['speed'] as num?)?.toDouble() ?? 1;
+    _elapsed
+      ..reset()
+      ..start();
     _isPlaying = isPlaying;
     _progress = duration > 0 ? (position / duration).clamp(0.0, 1.0) : 0.0;
 
@@ -127,15 +152,35 @@ class MusicProvider extends ChangeNotifier {
     _progress = 0.0;
     _hasActiveSession = false;
     _progressTimer?.cancel();
+    _elapsed
+      ..stop()
+      ..reset();
+    _position = 0;
+    _duration = 0;
     notifyListeners();
   }
 
   void _startProgressTimer() {
     _progressTimer?.cancel();
-    if (!_isPlaying) return;
+    if (!_isPlaying || _progressConsumers == 0) return;
     _progressTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _progress = _duration > 0
+          ? ((_position + _elapsed.elapsedMilliseconds * _speed) / _duration)
+                .clamp(0.0, 1.0)
+          : 0;
       notifyListeners();
     });
+  }
+
+  void showProgress() {
+    _progressConsumers++;
+    if (_progressConsumers == 1) _startProgressTimer();
+  }
+
+  void hideProgress() {
+    if (_progressConsumers == 0) return;
+    _progressConsumers--;
+    if (_progressConsumers == 0) _progressTimer?.cancel();
   }
 
   Future<void> requestPermissions() async {
@@ -215,6 +260,8 @@ class MusicProvider extends ChangeNotifier {
   @override
   void dispose() {
     _progressTimer?.cancel();
+    _elapsed.stop();
+    mediaChannel.setMethodCallHandler(null);
     super.dispose();
   }
 }

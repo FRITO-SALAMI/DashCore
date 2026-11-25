@@ -11,6 +11,7 @@
 # Build outputs
 build/
 android/.gradle/
+android/.kotlin/
 android/app/build/
 android/build/
 ios/Pods/

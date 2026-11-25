@@ -1,0 +1,299 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <style>
+    html,body,#view{width:100%;height:100%;margin:0;overflow:hidden;background:transparent;touch-action:none}
+    #message{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;color:#b8c2cc;font:12px sans-serif;text-align:center;pointer-events:none}
+    .spinner{width:24px;height:24px;border:2px solid rgba(255,255,255,.2);border-top-color:#00e5ff;border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <div id="message"><div class="spinner"></div></div>
+  <script src="three.min.js"></script>
+  <script src="GLTFLoader.js"></script>
+  <script src="DRACOLoader.js"></script>
+  <script src="OrbitControls.js"></script>
+  <script>
+  (function () {
+    var renderer, scene, camera, controls, model, frame, lastFrame = 0;
+    var message = document.getElementById('message');
+    var canvas = document.getElementById('view');
+
+    function send(type, data) {
+      try { Dashcore3d.postMessage(JSON.stringify({type:type,data:data||{}})); } catch (_) {}
+    }
+    function fail(text) {
+      message.innerHTML = text;
+      send('error', {message:text});
+    }
+    function context() {
+      var options = {alpha:true,antialias:false,depth:true,stencil:false,preserveDrawingBuffer:false};
+      var gl = canvas.getContext('webgl2', options);
+      if (gl) return {gl:gl, version:2};
+      gl = canvas.getContext('webgl', options) || canvas.getContext('experimental-webgl', options);
+      return gl ? {gl:gl, version:1} : null;
+    }
+    function normalizedName(value) {
+      return (value || '').toLowerCase().replace(/[\s\-_\.]/g, '').replace(/[0-9]/g, '')
+        .replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u');
+    }
+    function categoryFor(node) {
+      while (node) {
+        var name = normalizedName(node.name);
+        if (name === 'carroceria' || name === 'body' || name === 'carbody') return 'body';
+        if (name === 'cristales' || name === 'glass' || name === 'windows') return 'glass';
+        if (name === 'cromadosdetalles' || name === 'chrome' || name === 'trim') return 'chrome';
+        if (name === 'interior') return 'interior';
+        if (name === 'ruedasneumaticos' || name === 'wheelstires') return 'wheels';
+        if (name === 'mecanismos' || name === 'mechanisms') return 'mechanisms';
+        node = node.parent;
+      }
+      return '';
+    }
+    function categoryForMaterial(material) {
+      var name = normalizedName(material && material.name);
+      if (name.indexOf('carroceria') >= 0 || name === 'body' ||
+          name.indexOf('carbody') >= 0 || name.indexOf('exterior') >= 0 ||
+          name.indexOf('paint') >= 0) return 'body';
+      if (name.indexOf('cristal') >= 0 || name.indexOf('glass') >= 0 ||
+          name.indexOf('window') >= 0) return 'glass';
+      if (name.indexOf('cromado') >= 0 || name.indexOf('chrome') >= 0 ||
+          name.indexOf('trim') >= 0) return 'chrome';
+      if (name.indexOf('interior') >= 0) return 'interior';
+      if (name.indexOf('rueda') >= 0 || name.indexOf('neumatico') >= 0 ||
+          name.indexOf('wheel') >= 0 || name.indexOf('tire') >= 0 ||
+          name.indexOf('goma') >= 0) return 'wheels';
+      if (name.indexOf('mecanismo') >= 0 || name.indexOf('mechanism') >= 0) return 'mechanisms';
+      return '';
+    }
+    function paintMaterial(material, category, bodyColor) {
+      if (!material || !material.color) return;
+      if (category === 'body') {
+        // Palette textures used by many older GLBs multiply the selected
+        // color and can make every choice look unchanged. The cloned body
+        // material uses a clean paint color; other vehicle groups keep theirs.
+        material.map = null;
+        material.vertexColors = false;
+        material.color.copy(bodyColor); material.metalness = .62; material.roughness = .30;
+      } else if (category === 'interior') {
+        material.color.set(0x17191d); material.metalness = .08; material.roughness = .78;
+      } else if (category === 'chrome') {
+        material.color.set(0xb9c1c9); material.metalness = .95; material.roughness = .16;
+      } else if (category === 'glass') {
+        material.color.set(0x344b5b); material.metalness = .12; material.roughness = .18;
+      } else if (category === 'wheels') {
+        material.color.set(0x171717); material.metalness = .22; material.roughness = .72;
+      } else if (category === 'mechanisms') {
+        material.color.set(0x555a60); material.metalness = .70; material.roughness = .38;
+      }
+      material.needsUpdate = true;
+    }
+    function styleVehicle(root, hex) {
+      var bodyColor = new THREE.Color(hex || '#d9dde1');
+      root.traverse(function (node) {
+        if (!node.isMesh || !node.material) return;
+        var groupCategory = categoryFor(node);
+        var sourceMaterials = Array.isArray(node.material) ? node.material : [node.material];
+        var hasCategory = !!groupCategory || sourceMaterials.some(function (m) { return !!categoryForMaterial(m); });
+        if (!hasCategory) return;
+        // El GLB de Kia comparte PaletteMaterial001 entre casi todas las piezas.
+        // Cada malla necesita su copia para que carrocería, cristales e interior
+        // puedan conservar colores independientes.
+        if (!node.userData.dashcoreMaterialClone) {
+          node.material = Array.isArray(node.material)
+            ? node.material.map(function (m) { return m.clone(); })
+            : node.material.clone();
+          node.userData.dashcoreMaterialClone = true;
+        }
+        var materials = Array.isArray(node.material) ? node.material : [node.material];
+        materials.forEach(function (material, index) {
+          var category = groupCategory || categoryForMaterial(sourceMaterials[index]);
+          if (category) paintMaterial(material, category, bodyColor);
+        });
+      });
+    }
+    function optimize(root, low) {
+      root.traverse(function (node) {
+        if (!node.isMesh) return;
+        node.castShadow = false;
+        node.receiveShadow = false;
+        var materials = Array.isArray(node.material) ? node.material : [node.material];
+        materials.forEach(function (m) {
+          if (!m) return;
+          if (low && 'transmission' in m) m.transmission = 0;
+          ['map','normalMap','roughnessMap','metalnessMap','emissiveMap','aoMap'].forEach(function (key) {
+            var texture = m[key];
+            if (!texture) return;
+            texture.anisotropy = 1;
+            if (low) {
+              texture.minFilter = THREE.LinearFilter;
+              texture.generateMipmaps = false;
+              var image = texture.image;
+              if (image && image.width && image.height && Math.max(image.width, image.height) > 512) {
+                var scale = 512 / Math.max(image.width, image.height);
+                var reduced = document.createElement('canvas');
+                reduced.width = Math.max(1, Math.round(image.width * scale));
+                reduced.height = Math.max(1, Math.round(image.height * scale));
+                reduced.getContext('2d').drawImage(image, 0, 0, reduced.width, reduced.height);
+                texture.image = reduced;
+              }
+            }
+            texture.needsUpdate = true;
+          });
+        });
+      });
+    }
+    function resize() {
+      if (!renderer || !camera) return;
+      var width = Math.max(1, canvas.clientWidth), height = Math.max(1, canvas.clientHeight);
+      var low = window._dashcoreConfig && window._dashcoreConfig.low;
+      var scale = Math.min(1, Math.sqrt((low ? 256000 : 921600) / (width * height)));
+      renderer.setSize(Math.round(width * scale), Math.round(height * scale), false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      render();
+    }
+    function render() { if (renderer && scene && camera) renderer.render(scene, camera); }
+    function animate(time) {
+      frame = null;
+      if (!window._dashcoreConfig) return;
+      var config = window._dashcoreConfig;
+      if (!config.autoRotate || document.hidden) return;
+      frame = requestAnimationFrame(animate);
+      var interval = config.low ? 50 : 16;
+      if (time - lastFrame < interval) return;
+      lastFrame = time;
+      if (config.autoRotate && model) model.rotation.y += config.low ? .008 : .006;
+      if (controls) controls.update();
+      render();
+    }
+    function dispose() {
+      if (frame) cancelAnimationFrame(frame);
+      if (controls) controls.dispose();
+      var disposedTextures = [];
+      if (model) model.traverse(function (node) {
+        if (node.geometry) node.geometry.dispose();
+        var mats = node.material ? (Array.isArray(node.material) ? node.material : [node.material]) : [];
+        mats.forEach(function (m) {
+          ['map','normalMap','roughnessMap','metalnessMap','emissiveMap','aoMap'].forEach(function (key) {
+            var texture = m[key];
+            if (texture && disposedTextures.indexOf(texture) < 0) {
+              disposedTextures.push(texture);
+              texture.dispose();
+            }
+          });
+          if (m.dispose) m.dispose();
+        });
+      });
+      if (renderer) renderer.dispose();
+      frame = null;
+      model = null; controls = null; renderer = null; scene = null; camera = null;
+    }
+
+    window.initDashcore = function (config) {
+      dispose();
+      window._dashcoreConfig = config;
+      message.innerHTML = '<div class="spinner"></div>';
+      var detected = context();
+      if (!detected) { fail('Este dispositivo no ofrece WebGL 1.'); return; }
+      var maxTexture = detected.gl.getParameter(detected.gl.MAX_TEXTURE_SIZE) || 2048;
+      var memory = navigator.deviceMemory || 0;
+      config.low = !!config.lowResource || detected.version === 1 || maxTexture < 4096 || (memory && memory <= 2);
+      try {
+        renderer = new THREE.WebGLRenderer({canvas:canvas,context:detected.gl,alpha:true,antialias:!config.low});
+        renderer.setPixelRatio(config.low ? 1 : Math.min(window.devicePixelRatio || 1, 1.5));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = config.exposure || 1;
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(34, 1, .01, 1000);
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x253044, config.low ? 1.35 : 1.65));
+        var key = new THREE.DirectionalLight(0xffffff, config.low ? 1.3 : 1.8);
+        key.position.set(4, 6, 5); scene.add(key);
+        if (!config.low) { var fill = new THREE.DirectionalLight(0x66ccff, .65); fill.position.set(-5, 2, -3); scene.add(fill); }
+        controls = new THREE.OrbitControls(camera, canvas);
+        controls.enabled = !!config.cameraControls;
+        controls.enablePan = !config.disablePan;
+        controls.enableZoom = !config.disableZoom;
+        // Pointer events render immediately; a stationary vehicle costs no RAF.
+        controls.enableDamping = false;
+        controls.dampingFactor = .08;
+        controls.addEventListener('change', render);
+        resize();
+        var draco = new THREE.DRACOLoader();
+        draco.setDecoderPath('/draco/');
+        draco.setDecoderConfig({type:'js'});
+        var loader = new THREE.GLTFLoader();
+        loader.setDRACOLoader(draco);
+        loader.load(config.src, function (gltf) {
+          model = gltf.scene;
+          optimize(model, config.low);
+          styleVehicle(model, config.color);
+          var box = new THREE.Box3().setFromObject(model);
+          var size = box.getSize(new THREE.Vector3());
+          var center = box.getCenter(new THREE.Vector3());
+          model.position.sub(center);
+          scene.add(model);
+          var radius = Math.max(size.x, size.y, size.z) || 1;
+          var azimuth = (config.azimuth || 0) * Math.PI / 180;
+          var polar = (config.polar || 75) * Math.PI / 180;
+          var distance = radius * (config.distanceFactor || 1.8);
+          camera.position.set(distance*Math.sin(polar)*Math.sin(azimuth), distance*Math.cos(polar), distance*Math.sin(polar)*Math.cos(azimuth));
+          camera.near = Math.max(.001, radius / 1000); camera.far = radius * 100; camera.updateProjectionMatrix();
+          controls.target.set(0,0,0); controls.minDistance = radius*.45; controls.maxDistance = radius*8; controls.update();
+          message.innerHTML = '';
+          send('ready', {webgl:detected.version,low:config.low,maxTextureSize:maxTexture});
+          draco.dispose();
+          render();
+        }, undefined, function (error) {
+          draco.dispose();
+          fail('No se pudo cargar este modelo GLB.');
+          send('loadError', {message:String(error)});
+        });
+        animate(0);
+      } catch (error) { fail('El visor 3D no pudo iniciarse: ' + String(error)); }
+    };
+    window.updateDashcoreColor = function (hex) {
+      if (!model || !hex) return;
+      window._dashcoreConfig.color = hex;
+      styleVehicle(model, hex);
+      render();
+    };
+    window.updateDashcoreCamera = function (config) {
+      if (!model || !camera || !controls) return;
+      var box = new THREE.Box3().setFromObject(model);
+      var size = box.getSize(new THREE.Vector3());
+      var radius = Math.max(size.x, size.y, size.z) || 1;
+      var azimuth = config.azimuth * Math.PI / 180, polar = config.polar * Math.PI / 180;
+      var distance = radius * config.distanceFactor;
+      camera.position.set(distance*Math.sin(polar)*Math.sin(azimuth), distance*Math.cos(polar), distance*Math.sin(polar)*Math.cos(azimuth));
+      controls.update(); render();
+    };
+    window.updateDashcoreMotion = function (rotate) {
+      if (!window._dashcoreConfig) return;
+      window._dashcoreConfig.autoRotate = !!rotate;
+      if (frame) cancelAnimationFrame(frame);
+      frame = null;
+      if (rotate && !document.hidden) animate(0);
+      else render();
+    };
+    window.disposeDashcore = dispose;
+    document.addEventListener('visibilitychange', function () {
+      if (frame) cancelAnimationFrame(frame);
+      frame = null;
+      if (!document.hidden && window._dashcoreConfig && window._dashcoreConfig.autoRotate) animate(0);
+    });
+    window.addEventListener('resize', resize);
+    window.addEventListener('beforeunload', dispose);
+    canvas.addEventListener('webglcontextlost', function (event) { event.preventDefault(); fail('La memoria gráfica se agotó. Toca REINTENTAR.'); });
+    canvas.addEventListener('webglcontextrestored', function () {
+      if (window._dashcoreConfig) window.initDashcore(window._dashcoreConfig);
+    });
+  })();
+  </script>
+</body>
+</html>

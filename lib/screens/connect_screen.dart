@@ -6,7 +6,7 @@ import 'package:dashcore/widget/connection/bluetooth/bluetooth_tab.dart';
 import 'package:dashcore/widget/connection/bluetooth/bluetooth_waiting_widget.dart';
 import 'package:dashcore/widget/connection/connection_screen/custom_tab_bar.dart';
 import 'package:dashcore/utils/app_localizations.dart';
-import 'package:dashcore/providers/dash_settings_provider.dart';
+import '../widget/connection/obd_connection_help.dart';
 
 class ConnectionScreen extends StatefulWidget {
   final VoidCallback onBack;
@@ -43,34 +43,40 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
-                        onPressed: widget.onBack,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        loc.translate('connection').toUpperCase(),
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                    ],
+                  IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    onPressed: widget.onBack,
                   ),
-                  
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      loc.translate('connection').toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                  const ObdConnectionHelpButton(),
+                  const SizedBox(width: 8),
                   SizedBox(
                     width: 220, // Increased width to fill more edge
                     height: 55, // Slightly taller
                     child: ConnectionButtons(
-                      isConnected: obdProvider.isRealMode || obdProvider.isGpsMode,
+                      isConnected:
+                          obdProvider.isRealMode || obdProvider.isGpsMode,
                       onConnect: () async {
                         if (_selectedTab == ConnectionTab.gps) {
-                           obdProvider.toggleGpsMode();
+                          obdProvider.toggleGpsMode();
                         } else if (obdProvider.isDeviceConnected) {
                           obdProvider.toggleRealMode();
                         } else {
@@ -113,7 +119,11 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     );
   }
 
-  Widget _buildTabContent(ColorScheme colorScheme, AppLocalizations loc, ObdProvider obd) {
+  Widget _buildTabContent(
+    ColorScheme colorScheme,
+    AppLocalizations loc,
+    ObdProvider obd,
+  ) {
     if (_selectedTab == ConnectionTab.gps) {
       return _buildGpsPlaceholder(obd);
     }
@@ -133,17 +143,28 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
           Icon(
             isActive ? Icons.location_on_rounded : Icons.location_off_rounded,
             size: 100,
-            color: isActive ? const Color(0xFF00E5FF) : Colors.white10
+            color: isActive ? const Color(0xFF00E5FF) : Colors.white10,
           ),
           const SizedBox(height: 20),
           Text(
             isActive ? 'GPS ACTIVO' : 'MODO GPS DISPONIBLE',
-            style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+            ),
           ),
           const SizedBox(height: 10),
           Text(
-            isActive ? 'OBTENIENDO VELOCIDAD VÍA SATÉLITE' : 'USA EL GPS SI NO TIENES ADAPTADOR OBD2',
-            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12, fontWeight: FontWeight.bold),
+            isActive
+                ? 'OBTENIENDO VELOCIDAD VÍA SATÉLITE'
+                : 'USA EL GPS SI NO TIENES ADAPTADOR OBD2',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.4),
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 40),
           if (isActive)
@@ -159,13 +180,27 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.satellite_alt_rounded, color: Color(0xFF00E5FF), size: 24),
+                      Icon(
+                        Icons.satellite_alt_rounded,
+                        color: Color(0xFF00E5FF),
+                        size: 24,
+                      ),
                       SizedBox(width: 15),
-                      Text('ESTADO: ÓPTIMO', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text(
+                        'ESTADO: ÓPTIMO',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
                     ],
                   ),
                   SizedBox(height: 10),
-                  Text('Precisión reforzada activada', style: TextStyle(color: Colors.white24, fontSize: 10)),
+                  Text(
+                    'Precisión reforzada activada',
+                    style: TextStyle(color: Colors.white24, fontSize: 10),
+                  ),
                 ],
               ),
             ),

@@ -1,4 +1,6 @@
+import '../widget/display_units.dart';
 import 'dart:async';
+import '../widget/dashboard_limit_alerts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -6,10 +8,14 @@ import 'package:image_picker/image_picker.dart';
 
 import '../providers/obd_provider.dart';
 import '../providers/dash_settings_provider.dart';
-import '../providers/music_provider.dart';
 import '../models/obd_data.dart';
 import '../widget/tutorial/tutorial_keys.dart';
 import '../widget/gauges/sporty_dashboard.dart';
+import '../widget/gauges/instrument_cluster_v2.dart';
+import '../widget/gauges/night_drive_dashboard.dart';
+import '../widget/gauges/velocity_dashboard.dart';
+import '../widget/gauges/road_atlas_dashboard.dart';
+import 'car_screen.dart';
 import '../widget/gauges/racing_dashboard.dart';
 import '../widget/gauges/modern_dashboard.dart';
 import '../widget/gauges/vehicle_3d_dashboard.dart';
@@ -26,7 +32,9 @@ import 'dashboard/themes/race_cluster_theme_screen.dart';
 import 'dashboard/themes/modern_tesla_themes.dart';
 import '../widget/gauges/purple_maps_dashboard.dart';
 import '../widget/gauges/neon_world_dashboard.dart';
+import '../widget/gauges/orbit_world_dashboard.dart';
 import '../widget/gauges/dashcore_dashboard.dart';
+import '../widget/gauges/free_dashboard.dart';
 import '../utils/app_localizations.dart';
 import '../widget/dashboard_background.dart';
 import '../painters/rpm_gauge_painter.dart';
@@ -39,7 +47,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  StreamSubscription<String>? _errorSubscription;
   bool _showStyleConfig = false;
   String? _editingGaugeId;
   VoidCallback? _settingsListener;
@@ -47,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
   ObdData _renderedData = const ObdData();
   Timer? _telemetryFrameTimer;
   bool _isShowingDownloadDialog = false;
+  String? _dismissedResourceVehicle;
 
   @override
   void initState() {
@@ -54,20 +62,11 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final dashSettings = context.read<DashSettingsProvider>();
-      context.read<MusicProvider>().requestPermissions();
       _settingsListener = () {
         if (mounted) _checkResources(dashSettings);
       };
       dashSettings.addListener(_settingsListener!);
       _checkResources(dashSettings);
-      _errorSubscription = context.read<ObdProvider>().errorEvents.listen((
-        msg,
-      ) {
-        if (mounted)
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(msg), backgroundColor: Colors.redAccent),
-          );
-      });
     });
   }
 
@@ -100,6 +99,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _checkResources(DashSettingsProvider settings) {
     if (_isShowingDownloadDialog) return;
+    if (_dismissedResourceVehicle == settings.selectedVehicle?.id) return;
+    if (!{DashboardStyle.vehicle3D, DashboardStyle.teslaStyle,
+      DashboardStyle.teslaRoad, DashboardStyle.teslaModel,
+      DashboardStyle.freeDashboard}.contains(settings.selectedStyle)) return;
 
     if (settings.selectedVehicle != null &&
         !settings.selectedVehicle!.isDownloaded &&
@@ -164,6 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
               TextButton(
                 onPressed: () {
                   _isShowingDownloadDialog = false;
+                  _dismissedResourceVehicle = provider.selectedVehicle?.id;
                   Navigator.pop(ctx);
                 },
                 child: const Text(
@@ -210,7 +214,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _telemetryFrameTimer?.cancel();
     _obdProvider?.removeListener(_onTelemetryChanged);
-    _errorSubscription?.cancel();
     if (_settingsListener != null)
       try {
         context.read<DashSettingsProvider>().removeListener(_settingsListener!);
@@ -223,6 +226,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final settings = context.watch<DashSettingsProvider>();
     final isGif = settings.backgroundImage?.endsWith('.gif') ?? false;
     final loc = AppLocalizations.of(context);
+    final isSpanish = loc.language == Language.spanish;
 
     return Scaffold(
       key: TutorialKeys.dashboardKey,
@@ -232,17 +236,22 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Positioned.fill(
               child: TickerMode(
-                enabled: settings.isAppActive,
+                enabled: settings.isAppActive &&
+                    !(settings.selectedStyle == DashboardStyle.orbitWorld
+                        ? settings.reduceOrbitMotion
+                        : settings.reduceMotion),
                 child: RepaintBoundary(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
-                    child: _buildSelectedDashboard(settings, _renderedData),
+                    child: KeyedSubtree(
+                      key: ValueKey<DashboardStyle>(settings.selectedStyle),
+                      child: _buildSelectedDashboard(settings, _renderedData),
+                    ),
                   ),
                 ),
               ),
             ),
             if (settings.lightDesign != 0 &&
-                !isGif &&
                 settings.selectedStyle != DashboardStyle.sketch)
               Positioned.fill(
                 child: RepaintBoundary(
@@ -347,6 +356,12 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             }),
 
+            Positioned.fill(
+              child: DashboardLimitAlerts(
+                data: _renderedData,
+                settings: settings,
+              ),
+            ),
             if (settings.isEditMode)
               Positioned(
                 top: 20,
@@ -372,18 +387,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         _EditBarButton(
                           icon: Icons.add_rounded,
-                          label: 'GADGET',
+                          label: isSpanish ? 'INDICADOR' : 'GADGET',
                           onTap: () => _showAddGaugeMenu(context, settings),
                         ),
                         _EditBarButton(
                           icon: Icons.refresh_rounded,
-                          label: settings.sketchExists ? 'REINICIAR' : 'NUEVO',
+                          label: settings.sketchExists
+                              ? (isSpanish ? 'REINICIAR' : 'RESET')
+                              : (isSpanish ? 'NUEVO' : 'NEW'),
                           onTap: () => settings.createNewSketch(),
                         ),
                         _EditBarButton(
                           key: TutorialKeys.stylingButtonKey,
                           icon: Icons.palette_rounded,
-                          label: 'STYLING',
+                          label: isSpanish ? 'ESTILO' : 'STYLING',
                           onTap: () => setState(() {
                             _showStyleConfig = !_showStyleConfig;
                             if (!_showStyleConfig) _editingGaugeId = null;
@@ -396,7 +413,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         _EditBarButton(
                           icon: Icons.check_circle_rounded,
-                          label: 'LISTO',
+                          label: isSpanish ? 'LISTO' : 'DONE',
                           color: const Color(0xFF00E5FF),
                           onTap: () {
                             if (settings.selectedStyle == DashboardStyle.sketch)
@@ -433,6 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showAddGaugeMenu(BuildContext context, DashSettingsProvider settings) {
+    final isSpanish = settings.language == Language.spanish;
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF12151C),
@@ -445,8 +463,8 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'AÑADIR INDICADOR',
+              Text(
+                isSpanish ? 'AÑADIR INDICADOR' : 'ADD GAUGE',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -460,7 +478,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   _AddGaugeItem(
                     icon: Icons.speed,
-                    label: 'VEL',
+                    label: isSpanish ? 'VEL' : 'SPEED',
                     onTap: () {
                       settings.addCustomGauge('speed');
                       Navigator.pop(ctx);
@@ -484,7 +502,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   _AddGaugeItem(
                     icon: Icons.local_gas_station_rounded,
-                    label: 'FUEL',
+                    label: isSpanish ? 'COMB.' : 'FUEL',
                     onTap: () {
                       settings.addCustomGauge('fuel');
                       Navigator.pop(ctx);
@@ -500,7 +518,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   _AddGaugeItem(
                     icon: Icons.music_note_rounded,
-                    label: 'MUSIC',
+                    label: isSpanish ? 'MÚSICA' : 'MUSIC',
                     onTap: () {
                       settings.addCustomGauge('music_hub');
                       Navigator.pop(ctx);
@@ -508,7 +526,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   _AddGaugeItem(
                     icon: Icons.crop_square_rounded,
-                    label: 'BOX',
+                    label: isSpanish ? 'CAJA' : 'BOX',
                     onTap: () {
                       settings.addCustomGauge('box');
                       Navigator.pop(ctx);
@@ -526,7 +544,10 @@ class _HomeScreenState extends State<HomeScreen> {
   dynamic _getGaugeValue(String type, dynamic data) {
     switch (type) {
       case 'speed':
-        return data.speed;
+        return context
+            .read<DashSettingsProvider>()
+            .displaySpeed(data.speed)
+            .round();
       case 'rpm':
         return data.rpm;
       case 'temp':
@@ -544,7 +565,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _getGaugeUnit(String type) {
     switch (type) {
       case 'speed':
-        return 'KM/H';
+        return context.read<DashSettingsProvider>().speedUnitLabel;
       case 'rpm':
         return 'RPM';
       case 'temp':
@@ -561,15 +582,80 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildSelectedDashboard(
     DashSettingsProvider settings,
-    dynamic obdData,
+    ObdData rawData,
   ) {
+    final obdData = settings.displayData(rawData);
     final loc = AppLocalizations.of(context);
     final unit = settings.tempUnit == TemperatureUnit.celsius ? '°C' : '°F';
     final temp = settings.convertTemp(obdData.engineTemp).round();
     final fuel = settings.useSimulatedFuel
         ? settings.simulatedFuelLevel.round()
         : obdData.fuelLevel.round();
+    final design = switch (settings.selectedStyle) {
+      DashboardStyle.sporty => ClusterDesign.sport,
+      DashboardStyle.modern => ClusterDesign.modern,
+      DashboardStyle.racing => ClusterDesign.racing,
+      DashboardStyle.glowRed => ClusterDesign.glow,
+      DashboardStyle.hellishRed => ClusterDesign.hellish,
+      DashboardStyle.classicSport => ClusterDesign.classic,
+      DashboardStyle.racingHud || DashboardStyle.raceCluster => ClusterDesign.hud,
+      DashboardStyle.retroLcd => ClusterDesign.retro,
+      DashboardStyle.evCluster => ClusterDesign.electric,
+      _ => null,
+    };
+    if (design != null) {
+      final obd = context.read<ObdProvider>();
+      return InstrumentClusterV2(
+        speed: obdData.speed, rpm: obdData.rpm, coolantTemp: temp,
+        voltage: obdData.voltage, design: design, accent: settings.accentColor,
+        speedUnit: settings.speedUnitLabel, tempUnit: unit,
+        backgroundImage: settings.backgroundImage,
+        isAssetBackground: settings.isAssetBackground,
+        reduceMotion: settings.reduceMotion || MediaQuery.disableAnimationsOf(context),
+        rearArtwork: switch (design) {
+          ClusterDesign.electric || ClusterDesign.retro || ClusterDesign.classic =>
+            settings.selectedVehicle?.rearArtworkPath,
+          _ => null,
+        },
+        engineAvailable: obd.isDemoMode || obd.isGpsMode || (obd.isRealMode && obd.state == ObdConnectionState.ready),
+        sourceLabel: obd.isGpsMode ? 'GPS + SIMULACIÓN' : obd.isDemoMode ? 'DEMO' : obd.isRealMode ? 'OBD II' : 'SIN CONEXIÓN',
+      );
+    }
     switch (settings.selectedStyle) {
+      case DashboardStyle.roadAtlas:
+        final obd = context.read<ObdProvider>();
+        return RoadAtlasDashboard(
+          data: obdData,
+          source: obd.isDemoMode ? 'DEMO' : obd.isGpsMode ? 'GPS' :
+              obd.isRealMode && obd.state == ObdConnectionState.ready ? 'OBD II' : 'SIN CONEXIÓN',
+          onGarage: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (routeContext) =>
+              CarScreen(onBack: () => Navigator.of(routeContext).pop())),
+          ),
+        );
+      case DashboardStyle.apexGt:
+      case DashboardStyle.carbonPulse:
+        final obd = context.read<ObdProvider>();
+        return VelocityDashboard(
+          style: settings.selectedStyle,
+          data: rawData,
+          settings: settings,
+          engineAvailable: obd.isDemoMode || obd.isGpsMode ||
+              (obd.isRealMode && obd.state == ObdConnectionState.ready),
+          sourceLabel: obd.isGpsMode ? 'GPS + SIMULACIÓN' : obd.isDemoMode ? 'DEMO' :
+              obd.isRealMode && obd.state == ObdConnectionState.ready ? 'OBD II' : 'SIN CONEXIÓN',
+          onGarage: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (routeContext) => CarScreen(
+                onBack: () => Navigator.of(routeContext).pop(),
+              ),
+            ),
+          ),
+        );
+      case DashboardStyle.nightDrive:
+        final obd = context.read<ObdProvider>();
+        return NightDriveDashboard(data: rawData, settings: settings,
+          sourceLabel: obd.isGpsMode ? 'GPS + SIMULACIÓN' : obd.isDemoMode ? 'DEMO' : obd.isRealMode ? 'OBD II' : 'SIN CONEXIÓN');
       case DashboardStyle.sporty:
         return SportyDashboard(
           speed: obdData.speed,
@@ -631,6 +717,19 @@ class _HomeScreenState extends State<HomeScreen> {
           rpm: obdData.rpm,
           coolantTemp: temp,
           voltage: obdData.voltage,
+        );
+      case DashboardStyle.orbitWorld:
+        return OrbitWorldDashboard(
+          speed: obdData.speed,
+          rpm: obdData.rpm,
+          coolantTemp: temp,
+          voltage: obdData.voltage,
+        );
+      case DashboardStyle.freeDashboard:
+        return FreeDashboard(
+          data: rawData,
+          settings: settings,
+          modelPath: settings.modelPath,
         );
       case DashboardStyle.dashcore:
         return DashcoreDashboard(data: obdData);
@@ -708,7 +807,7 @@ class _HomeScreenState extends State<HomeScreen> {
             coolantPercent: (obdData.engineTemp / 120).clamp(0.0, 1.0),
             fuelLevel: fuel.toDouble(),
             engineTime: '06:99',
-            trip: '${obdData.odometer / 10}.0',
+            trip: (obdData.odometer / 10).toStringAsFixed(1),
           ),
           accentColor: settings.accentColor,
         );
@@ -741,6 +840,8 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       case DashboardStyle.dashcorevideo:
         return PremiumDashboard(data: obdData, fuelLevel: fuel.toDouble());
+      case DashboardStyle.mp4Player:
+        return Mp4Dashboard(data: obdData, fuelLevel: fuel.toDouble());
       case DashboardStyle.gifSpeedo:
         return Stack(
           alignment: Alignment.center,
@@ -766,8 +867,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontStyle: FontStyle.italic,
                   ),
                 ),
-                const Text(
-                  'KM/H',
+                const SpeedUnitLabel(
                   style: TextStyle(
                     color: Color(0xFF00E5FF),
                     fontSize: 24,
@@ -1072,10 +1172,13 @@ class _DashboardLightOverlayState extends State<_DashboardLightOverlay>
       animation: _c,
       builder: (context, child) {
         double op = 0.25;
-        if (widget.design == 2)
-          op = 0.1 + (_c.value * 0.3);
-        else if (widget.design == 3)
-          op = (widget.rpm / 8000).clamp(0.15, 0.7);
+        if (widget.design == 1) {
+          op = 0.45; // Más intenso para el modo estático
+        } else if (widget.design == 2) {
+          op = 0.15 + (_c.value * 0.45);
+        } else if (widget.design == 3) {
+          op = (widget.rpm / 8000).clamp(0.15, 0.8);
+        }
         return IgnorePointer(
           child: Container(
             decoration: BoxDecoration(
@@ -1153,6 +1256,7 @@ class _StyleConfigPanelState extends State<_StyleConfigPanel> {
   int _currentTab = 0;
   @override
   Widget build(BuildContext context) {
+    final isSpanish = AppLocalizations.of(context).language == Language.spanish;
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF13161D).withOpacity(0.98),
@@ -1185,8 +1289,8 @@ class _StyleConfigPanelState extends State<_StyleConfigPanel> {
                   const SizedBox(width: 10),
                   Text(
                     widget.editingGaugeId != null
-                        ? 'DISEÑO INDICADOR'
-                        : 'EDITOR',
+                        ? (isSpanish ? 'DISEÑO DEL INDICADOR' : 'GAUGE DESIGN')
+                        : (isSpanish ? 'EDITOR' : 'EDITOR'),
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w900,
@@ -1213,13 +1317,13 @@ class _StyleConfigPanelState extends State<_StyleConfigPanel> {
                     Row(
                       children: [
                         _TabButton(
-                          label: 'LUCES',
+                          label: isSpanish ? 'LUCES' : 'LIGHTS',
                           isActive: _currentTab == 0,
                           onTap: () => setState(() => _currentTab = 0),
                         ),
                         const SizedBox(width: 8),
                         _TabButton(
-                          label: 'PERSONALIZAR',
+                          label: isSpanish ? 'PERSONALIZAR' : 'CUSTOMIZE',
                           isActive: _currentTab == 1,
                           onTap: () => setState(() => _currentTab = 1),
                         ),
@@ -1228,8 +1332,8 @@ class _StyleConfigPanelState extends State<_StyleConfigPanel> {
                   const SizedBox(height: 24),
                   if (widget.editingGaugeId == null) ...[
                     if (_currentTab == 0) ...[
-                      const Text(
-                        'COLOR PRINCIPAL',
+                      Text(
+                        isSpanish ? 'COLOR PRINCIPAL' : 'MAIN COLOR',
                         style: TextStyle(
                           color: Colors.white38,
                           fontSize: 9,
@@ -1249,8 +1353,8 @@ class _StyleConfigPanelState extends State<_StyleConfigPanel> {
                         },
                       ),
                       const SizedBox(height: 20),
-                      const Text(
-                        'COLOR DE AGUJA',
+                      Text(
+                        isSpanish ? 'COLOR DE AGUJA' : 'NEEDLE COLOR',
                         style: TextStyle(
                           color: Colors.white38,
                           fontSize: 9,
@@ -1265,8 +1369,8 @@ class _StyleConfigPanelState extends State<_StyleConfigPanel> {
                             widget.settings.setNeedleColor(c),
                       ),
                       const SizedBox(height: 20),
-                      const Text(
-                        'DISEÑO DE ILUMINACIÓN',
+                      Text(
+                        isSpanish ? 'DISEÑO DE ILUMINACIÓN' : 'LIGHTING DESIGN',
                         style: TextStyle(
                           color: Colors.white38,
                           fontSize: 9,
@@ -1277,29 +1381,29 @@ class _StyleConfigPanelState extends State<_StyleConfigPanel> {
                       const SizedBox(height: 12),
                       ...[
                         _DesignOption(
-                          label: 'SIN ILUMINACIÓN',
+                          label: isSpanish ? 'SIN ILUMINACIÓN' : 'NO LIGHTING',
                           isActive: widget.settings.lightDesign == 0,
                           onTap: () => widget.settings.setLightDesign(0),
                         ),
                         _DesignOption(
-                          label: 'NEÓN ESTÁTICO',
+                          label: isSpanish ? 'NEÓN ESTÁTICO' : 'STATIC NEON',
                           isActive: widget.settings.lightDesign == 1,
                           onTap: () => widget.settings.setLightDesign(1),
                         ),
                         _DesignOption(
-                          label: 'RESPIRACIÓN',
+                          label: isSpanish ? 'RESPIRACIÓN' : 'BREATHING',
                           isActive: widget.settings.lightDesign == 2,
                           onTap: () => widget.settings.setLightDesign(2),
                         ),
                         _DesignOption(
-                          label: 'DINÁMICO RPM',
+                          label: isSpanish ? 'DINÁMICO RPM' : 'RPM DYNAMIC',
                           isActive: widget.settings.lightDesign == 3,
                           onTap: () => widget.settings.setLightDesign(3),
                         ),
                       ],
                     ] else ...[
-                      const Text(
-                        'AÑADIR HUBS',
+                      Text(
+                        isSpanish ? 'AÑADIR INDICADORES' : 'ADD GAUGES',
                         style: TextStyle(
                           color: Colors.white38,
                           fontSize: 9,
@@ -1317,7 +1421,7 @@ class _StyleConfigPanelState extends State<_StyleConfigPanel> {
                         childAspectRatio: 2.5,
                         children: [
                           _HubAddItem(
-                            label: 'VELOCIDAD',
+                            label: isSpanish ? 'VELOCIDAD' : 'SPEED',
                             icon: Icons.speed,
                             onTap: () =>
                                 widget.settings.addCustomGauge('speed'),
@@ -1328,17 +1432,17 @@ class _StyleConfigPanelState extends State<_StyleConfigPanel> {
                             onTap: () => widget.settings.addCustomGauge('rpm'),
                           ),
                           _HubAddItem(
-                            label: 'TEMPERATURA',
+                            label: isSpanish ? 'TEMPERATURA' : 'TEMPERATURE',
                             icon: Icons.thermostat,
                             onTap: () => widget.settings.addCustomGauge('temp'),
                           ),
                           _HubAddItem(
-                            label: 'VOLTAJE',
+                            label: isSpanish ? 'VOLTAJE' : 'VOLTAGE',
                             icon: Icons.bolt,
                             onTap: () => widget.settings.addCustomGauge('volt'),
                           ),
                           _HubAddItem(
-                            label: 'MÚSICA',
+                            label: isSpanish ? 'MÚSICA' : 'MUSIC',
                             icon: Icons.music_note_rounded,
                             onTap: () =>
                                 widget.settings.addCustomGauge('music_hub'),
@@ -1491,8 +1595,6 @@ class _ColorPicker extends StatefulWidget {
 }
 
 class _ColorPickerState extends State<_ColorPicker> {
-  bool _showExtended = false;
-
   @override
   Widget build(BuildContext context) {
     final colors = [
@@ -1504,70 +1606,112 @@ class _ColorPickerState extends State<_ColorPicker> {
       Colors.pinkAccent,
       Colors.white,
     ];
-    final extended = [
-      Colors.blue,
-      Colors.teal,
-      Colors.amber,
-      Colors.deepPurple,
-      Colors.lime,
-      Colors.indigo,
-      Colors.blueGrey,
-    ];
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
       children: [
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            ...colors.map((c) => _colorDot(c)),
-            GestureDetector(
-              onTap: () => setState(() => _showExtended = !_showExtended),
-              child: Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: _showExtended ? Colors.white : Colors.white10,
-                  ),
-                ),
-                child: Icon(
-                  _showExtended ? Icons.close_rounded : Icons.add_rounded,
-                  color: Colors.white,
-                  size: 18,
-                ),
-              ),
-            ),
-          ],
-        ),
-        if (_showExtended) ...[
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(10),
+        ...colors.map((c) => _colorDot(c)),
+        GestureDetector(
+          onTap: _showFullPalette,
+          child: Container(
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.03),
-              borderRadius: BorderRadius.circular(12),
+              color: Colors.white.withOpacity(0.1),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white24),
             ),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: extended.map((c) => _colorDot(c, small: true)).toList(),
-            ),
+            child: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
           ),
-        ],
+        ),
       ],
     );
   }
 
-  Widget _colorDot(Color c, {bool small = false}) {
+  Future<void> _showFullPalette() async {
+    final isSpanish = AppLocalizations.of(context).language == Language.spanish;
+    const families = <MaterialColor>[
+      Colors.red,
+      Colors.pink,
+      Colors.purple,
+      Colors.deepPurple,
+      Colors.indigo,
+      Colors.blue,
+      Colors.lightBlue,
+      Colors.cyan,
+      Colors.teal,
+      Colors.green,
+      Colors.lightGreen,
+      Colors.lime,
+      Colors.yellow,
+      Colors.amber,
+      Colors.orange,
+      Colors.deepOrange,
+      Colors.brown,
+      Colors.grey,
+      Colors.blueGrey,
+    ];
+    const shades = <int>[100, 300, 500, 700, 900];
+    final palette = <Color>[
+      Colors.white,
+      Colors.black,
+      for (final family in families)
+        for (final shade in shades) family[shade]!,
+      Colors.redAccent,
+      Colors.pinkAccent,
+      Colors.purpleAccent,
+      Colors.deepPurpleAccent,
+      Colors.indigoAccent,
+      Colors.blueAccent,
+      Colors.cyanAccent,
+      Colors.tealAccent,
+      Colors.greenAccent,
+      Colors.limeAccent,
+      Colors.yellowAccent,
+      Colors.amberAccent,
+      Colors.orangeAccent,
+      Colors.deepOrangeAccent,
+    ];
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF13161D),
+        title: Text(isSpanish ? 'PALETA DE COLORES' : 'COLOR PALETTE'),
+        content: SizedBox(
+          width: 420,
+          height: 360,
+          child: GridView.builder(
+            itemCount: palette.length,
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 48,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+            ),
+            itemBuilder: (_, index) => GestureDetector(
+              onTap: () {
+                widget.onColorSelected(palette[index]);
+                Navigator.pop(dialogContext);
+              },
+              child: _colorDot(palette[index], enabled: false),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(isSpanish ? 'CERRAR' : 'CLOSE'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _colorDot(Color c, {bool small = false, bool enabled = true}) {
     final bool isSelected = widget.selectedColor.value == c.value;
     final size = small ? 28.0 : 34.0;
     return GestureDetector(
-      onTap: () => widget.onColorSelected(c),
+      onTap: enabled ? () => widget.onColorSelected(c) : null,
       child: Container(
         width: size,
         height: size,
@@ -1599,12 +1743,13 @@ class _GaugeEditor extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
+    final isSpanish = AppLocalizations.of(context).language == Language.spanish;
     final gauge = settings.customGauges.firstWhere((g) => g.id == gaugeId);
     return Expanded(
       child: ListView(
         children: [
-          const Text(
-            'DISEÑO VISUAL',
+          Text(
+            isSpanish ? 'DISEÑO VISUAL' : 'VISUAL DESIGN',
             style: TextStyle(
               color: Colors.white38,
               fontSize: 9,
@@ -1614,17 +1759,17 @@ class _GaugeEditor extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _DesignOption(
-            label: 'POR DEFECTO',
+            label: isSpanish ? 'POR DEFECTO' : 'DEFAULT',
             isActive: gauge.design == 0,
             onTap: () => settings.updateGaugeDesign(gaugeId, 0),
           ),
           _DesignOption(
-            label: 'ESTILO MODERN',
+            label: isSpanish ? 'ESTILO MODERNO' : 'MODERN STYLE',
             isActive: gauge.design == 1,
             onTap: () => settings.updateGaugeDesign(gaugeId, 1),
           ),
           _DesignOption(
-            label: 'MINIMALISTA',
+            label: isSpanish ? 'MINIMALISTA' : 'MINIMAL',
             isActive: gauge.design == 2,
             onTap: () => settings.updateGaugeDesign(gaugeId, 2),
           ),
@@ -1640,8 +1785,8 @@ class _GaugeEditor extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text(
-              'ELIMINAR INDICADOR',
+            child: Text(
+              isSpanish ? 'ELIMINAR INDICADOR' : 'DELETE GAUGE',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 10,

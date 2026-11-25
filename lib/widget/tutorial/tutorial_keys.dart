@@ -15,6 +15,7 @@ class TutorialKeys {
   static final GlobalKey stylingColorPickerKey = GlobalKey();
   static final GlobalKey workshopColorKey = GlobalKey();
   static final GlobalKey speedGaugeKey = GlobalKey();
+  static final GlobalKey rpmGaugeKey = GlobalKey();
   static final GlobalKey temperatureGaugeKey = GlobalKey();
   static final GlobalKey voltageGaugeKey = GlobalKey();
   static final GlobalKey loginButtonKey = GlobalKey();

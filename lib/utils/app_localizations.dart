@@ -80,6 +80,7 @@ class AppLocalizations {
       'custom_app': 'CUSTOM APP',
       'clear_slot': 'CLEAR SLOT',
       'save': 'SAVE',
+      'connecting_obd_dots': 'Connecting OBDII ...',
     },
     Language.spanish: {
       'connection': 'Conexión',
@@ -148,6 +149,7 @@ class AppLocalizations {
       'custom_app': 'APP PERSONALIZADA',
       'clear_slot': 'LIMPIAR ESPACIO',
       'save': 'GUARDAR',
+      'connecting_obd_dots': 'Conectando OBDII ...',
     },
   };
 

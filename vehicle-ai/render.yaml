@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: dashcore-vehicle-art
+    runtime: docker
+    plan: free
+    rootDir: vehicle-ai
+    healthCheckPath: /health
+    envVars:
+      - key: VEHICLE_AI_TOKEN
+        generateValue: true

@@ -9,11 +9,13 @@ class AppThemes {
     fontFamily: 'Inter',
 
     colorScheme: const ColorScheme.dark(
-      primary: Color(0xFF00E5FF), // Neon Blue
-      onPrimary: Colors.black,
+      primary: AppColors.accent,
+      onPrimary: AppColors.background,
       secondary: AppColors.secondaryAccent,
       onSecondary: Colors.white,
       surface: AppColors.background,
+      surfaceContainer: AppColors.cardBg,
+      surfaceContainerHigh: AppColors.elevatedBg,
       onSurface: AppColors.textMainColor,
       outline: AppColors.border,
       error: AppColors.error,
@@ -26,7 +28,7 @@ class AppThemes {
     ),
 
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: const Color(0xFF181E27),
+      backgroundColor: AppColors.elevatedBg,
       contentTextStyle: const TextStyle(color: Colors.white, fontFamily: 'Inter'),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

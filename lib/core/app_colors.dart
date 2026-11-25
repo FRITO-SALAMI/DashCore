@@ -6,26 +6,26 @@ class AppColors {
   // ============================================================
 
   /// Fondo principal de toda la aplicación.
-  static const Color background = Color(0xFF090B0F);
+  static const Color background = Color(0xFF0B1018);
 
   /// Superficie normal: tarjetas, paneles, navegación.
-  static const Color cardBg = Color(0xFF11151C);
+  static const Color cardBg = Color(0xFF141E2B);
 
   /// Superficie elevada: modales, elementos destacados.
-  static const Color elevatedBg = Color(0xFF181E27);
+  static const Color elevatedBg = Color(0xFF1B293A);
 
   /// Superficie secundaria.
-  static const Color secondaryBg = Color(0xFF202733);
+  static const Color secondaryBg = Color(0xFF24354A);
 
   // ============================================================
   // BRAND / ACCENTS
   // ============================================================
 
   /// Color principal de DashCore (Neon Blue).
-  static const Color accent = Color(0xFF00E5FF);
+  static const Color accent = Color(0xFF77DFEA);
 
   /// Acento secundario.
-  static const Color secondaryAccent = Color(0xFF7C8CFF);
+  static const Color secondaryAccent = Color(0xFFC7C1FF);
 
   // ============================================================
   // TEXT
@@ -41,7 +41,7 @@ class AppColors {
   // UI
   // ============================================================
 
-  static const Color border = Color(0xFF252D38);
+  static const Color border = Color(0xFF394B61);
 
   static const Color divider = Color(0xFF1D242E);
 

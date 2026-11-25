@@ -4,7 +4,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import '../providers/obd_provider.dart';
-import 'analytics_service.dart';
+import 'diagnostic_service.dart';
 
 class PerformanceMonitorService {
   PerformanceMonitorService._();
@@ -44,23 +44,21 @@ class PerformanceMonitorService {
 
   Future<void> _sendSample() async {
     try {
-      final native = await _platform.invokeMapMethod<String, dynamic>(
+      final native =
+          await _platform.invokeMapMethod<String, dynamic>(
             'getPerformanceSnapshot',
           ) ??
           const <String, dynamic>{};
       final averageFrameMs = _frames == 0
           ? 0.0
           : _frameSpan.inMicroseconds / _frames / 1000.0;
-      await AnalyticsService.instance.logEvent('performance_sample', data: {
-        ...native,
-        'frames': _frames,
-        'slow_frames': _slowFrames,
-        'average_frame_ms': averageFrameMs,
-        'estimated_fps': averageFrameMs > 0 ? 1000 / averageFrameMs : 0,
-        'gps_active': _obd?.isGpsMode ?? false,
-        'obd_active': _obd?.isRealMode ?? false,
-        'obd_state': _obd?.state.name,
-      });
+      DiagnosticService.log(
+        'LOCAL PERFORMANCE: ${{...native, 'frames': _frames, 'slow_frames': _slowFrames, 'average_frame_ms': averageFrameMs, 'estimated_fps': averageFrameMs > 0 ? 1000 / averageFrameMs : 0, 'gps_active': _obd?.isGpsMode ?? false, 'obd_active': _obd?.isRealMode ?? false, 'obd_state': _obd?.state.name}}',
+      );
+    } on MissingPluginException {
+      // Diagnostics are optional on devices without the native bridge.
+    } on PlatformException {
+      // A failed diagnostic sample must not interrupt driving instruments.
     } finally {
       _resetFrames();
     }

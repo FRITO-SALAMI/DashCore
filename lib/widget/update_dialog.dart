@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/analytics_service.dart';
+import '../services/sync_service.dart';
 
 enum UpdateStatus { upToDate, available, checking, error }
 
@@ -159,7 +159,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                     child: TextButton(
                       onPressed: () {
                         if (_status == UpdateStatus.available) {
-                          AnalyticsService.instance.logEvent('app_update_ignored', data: {
+                          SyncService.instance.logEvent('app_update_ignored', data: {
                             'version': widget.newVersion,
                           });
                         }
@@ -181,7 +181,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        AnalyticsService.instance.logEvent('app_update_clicked', data: {
+                        SyncService.instance.logEvent('app_update_clicked', data: {
                           'version': widget.newVersion,
                         });
                         _launchUrl();

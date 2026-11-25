@@ -1,6 +1,7 @@
+import '../../../widget/display_units.dart';
+import '../../../widget/compatible_vehicle_model.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'package:provider/provider.dart';
 import '../../../widget/music_hub.dart';
 import '../../../models/obd_data.dart';
@@ -49,9 +50,15 @@ class _ModernTeslaRoadThemeState extends State<ModernTeslaRoadTheme>
     final isGifBackground = settings.backgroundImage?.endsWith('.gif') ?? false;
 
     // Warning states
-    final bool isTempWarning = settings.tempWarningEnabled && widget.data.engineTemp >= settings.tempAlertThreshold;
-    final bool isSpeedWarning = settings.speedWarningEnabled && widget.data.speed >= settings.speedAlertThreshold;
-    final Color displayAccent = isSpeedWarning ? Colors.redAccent : widget.accentColor;
+    final bool isTempWarning =
+        settings.tempWarningEnabled &&
+        widget.data.engineTemp >= settings.tempAlertThreshold;
+    final bool isSpeedWarning =
+        settings.speedWarningEnabled &&
+        widget.data.speed >= settings.displaySpeedAlertThreshold;
+    final Color displayAccent = isSpeedWarning
+        ? Colors.redAccent
+        : widget.accentColor;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -86,20 +93,19 @@ class _ModernTeslaRoadThemeState extends State<ModernTeslaRoadTheme>
             left: 0,
             right: 0,
             height: 180,
-            child: IgnorePointer(
-              child: ModelViewer(
-                key: ValueKey(widget.modelPath),
-                src: widget.modelPath,
-                backgroundColor: Colors.transparent,
-                autoRotate: false,
-                cameraControls: false,
-                disableZoom: true,
-                disablePan: true,
-                cameraOrbit: '180deg 65deg 5m',
-                exposure: 1.2,
-                loading: Loading.eager,
-                shadowIntensity: 0.1,
-              ),
+            child: CompatibleVehicleModel(
+              key: ValueKey(widget.modelPath),
+              src: widget.modelPath,
+              backgroundColor: Colors.transparent,
+              autoRotate: false,
+              cameraControls: false,
+              disableZoom: true,
+              disablePan: true,
+              cameraOrbit: '180deg 65deg 5m',
+              rearView: true,
+              exposure: 1.2,
+              loading: Loading.eager,
+              shadowIntensity: 0.1,
             ),
           ),
 
@@ -114,16 +120,19 @@ class _ModernTeslaRoadThemeState extends State<ModernTeslaRoadTheme>
                   duration: const Duration(milliseconds: 300),
                   style: TextStyle(
                     color: isSpeedWarning ? Colors.redAccent : Colors.white,
-                    fontSize: isSpeedWarning ? 160 : 140,
+                    fontSize: widget.data.speed >= 100
+                        ? (isSpeedWarning ? 132 : 116)
+                        : (isSpeedWarning ? 160 : 140),
                     fontWeight: FontWeight.w900,
                     height: 1.0,
                   ),
                   child: Text(widget.data.speed.round().toString()),
                 ),
-                Text(
-                  'KM/H',
+                SpeedUnitLabel(
                   style: TextStyle(
-                    color: isSpeedWarning ? Colors.redAccent.withOpacity(0.5) : Colors.white54,
+                    color: isSpeedWarning
+                        ? Colors.redAccent.withOpacity(0.5)
+                        : Colors.white54,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 4,
@@ -143,7 +152,9 @@ class _ModernTeslaRoadThemeState extends State<ModernTeslaRoadTheme>
                 _TeslaStat(
                   label: 'TEMP',
                   value: '${widget.data.engineTemp}°C',
-                  accentColor: isTempWarning ? Colors.redAccent : widget.accentColor,
+                  accentColor: isTempWarning
+                      ? Colors.redAccent
+                      : widget.accentColor,
                   isWarning: isTempWarning,
                 ),
                 const SizedBox(height: 20),
@@ -212,17 +223,24 @@ class ModernTeslaModelTheme extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDark = backgroundImage == 'COLOR_BLACK' || backgroundImage == null || !isAssetBackground;
+    final bool isDark =
+        backgroundImage == 'COLOR_BLACK' ||
+        backgroundImage == null ||
+        !isAssetBackground;
     final Color textColor = isDark ? Colors.white : Colors.black;
     final Color subTextColor = isDark ? Colors.white54 : Colors.black54;
 
     final settings = context.watch<DashSettingsProvider>();
-    final bool isTempWarning = settings.tempWarningEnabled && data.engineTemp >= settings.tempAlertThreshold;
-    final bool isSpeedWarning = settings.speedWarningEnabled && data.speed >= settings.speedAlertThreshold;
+    final bool isTempWarning =
+        settings.tempWarningEnabled &&
+        data.engineTemp >= settings.tempAlertThreshold;
+    final bool isSpeedWarning =
+        settings.speedWarningEnabled &&
+        data.speed >= settings.displaySpeedAlertThreshold;
     final Color displayAccent = isSpeedWarning ? Colors.redAccent : accentColor;
 
     return Scaffold(
-      backgroundColor: isDark ? Colors.black : const Color(0xFFF1F3F5), 
+      backgroundColor: isDark ? Colors.black : const Color(0xFFF1F3F5),
       body: Stack(
         children: [
           // ... (DashboardBackground)
@@ -237,7 +255,7 @@ class ModernTeslaModelTheme extends StatelessWidget {
             child: SizedBox(
               width: MediaQuery.of(context).size.width * 0.7,
               height: MediaQuery.of(context).size.height * 0.6,
-              child: ModelViewer(
+              child: CompatibleVehicleModel(
                 key: ValueKey(modelPath),
                 src: modelPath,
                 backgroundColor: Colors.transparent,
@@ -256,7 +274,7 @@ class ModernTeslaModelTheme extends StatelessWidget {
           // Speed on the Left
           Positioned(
             left: 80,
-            top: MediaQuery.of(context).size.height * 0.15, 
+            top: MediaQuery.of(context).size.height * 0.15,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -264,15 +282,18 @@ class ModernTeslaModelTheme extends StatelessWidget {
                   duration: const Duration(milliseconds: 300),
                   style: TextStyle(
                     color: isSpeedWarning ? Colors.redAccent : textColor,
-                    fontSize: isSpeedWarning ? 180 : 160,
+                    fontSize: data.speed >= 100
+                        ? (isSpeedWarning ? 145 : 130)
+                        : (isSpeedWarning ? 180 : 160),
                     fontWeight: FontWeight.w900,
                   ),
                   child: Text(data.speed.round().toString()),
                 ),
-                Text(
-                  'KM/H',
+                SpeedUnitLabel(
                   style: TextStyle(
-                    color: isSpeedWarning ? Colors.redAccent.withOpacity(0.5) : subTextColor,
+                    color: isSpeedWarning
+                        ? Colors.redAccent.withOpacity(0.5)
+                        : subTextColor,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 4,
@@ -342,13 +363,17 @@ class _TeslaStat extends StatefulWidget {
   State<_TeslaStat> createState() => _TeslaStatState();
 }
 
-class _TeslaStatState extends State<_TeslaStat> with SingleTickerProviderStateMixin {
+class _TeslaStatState extends State<_TeslaStat>
+    with SingleTickerProviderStateMixin {
   late AnimationController _blinkController;
 
   @override
   void initState() {
     super.initState();
-    _blinkController = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _blinkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
     if (widget.isWarning) _blinkController.repeat(reverse: true);
   }
 
@@ -374,8 +399,12 @@ class _TeslaStatState extends State<_TeslaStat> with SingleTickerProviderStateMi
       animation: _blinkController,
       builder: (context, child) {
         final opacity = widget.isWarning ? _blinkController.value : 1.0;
-        final Color textColor = widget.isWarning ? Colors.redAccent : (widget.isLight ? Colors.black : Colors.white);
-        final Color displayAccent = widget.isWarning ? Colors.redAccent : widget.accentColor;
+        final Color textColor = widget.isWarning
+            ? Colors.redAccent
+            : (widget.isLight ? Colors.black : Colors.white);
+        final Color displayAccent = widget.isWarning
+            ? Colors.redAccent
+            : widget.accentColor;
 
         return Opacity(
           opacity: widget.isWarning ? (0.4 + 0.6 * opacity) : 1.0,
@@ -399,11 +428,7 @@ class _TeslaStatState extends State<_TeslaStat> with SingleTickerProviderStateMi
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              Container(
-                width: 60,
-                height: 3,
-                color: displayAccent,
-              ),
+              Container(width: 60, height: 3, color: displayAccent),
             ],
           ),
         );
@@ -430,7 +455,9 @@ class _ModernMusicHub extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: isLight ? Colors.white.withOpacity(0.95) : Colors.black.withOpacity(0.7),
+        color: isLight
+            ? Colors.white.withOpacity(0.95)
+            : Colors.black.withOpacity(0.7),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: isLight ? Colors.black12 : Colors.white10),
       ),
@@ -439,7 +466,11 @@ class _ModernMusicHub extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.music_note, color: isLight ? Colors.black : accentColor, size: 18),
+            Icon(
+              Icons.music_note,
+              color: isLight ? Colors.black : accentColor,
+              size: 18,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
@@ -459,7 +490,8 @@ class _ModernMusicHub extends StatelessWidget {
                     music.artistName,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: (isLight ? Colors.black : Colors.white).withOpacity(0.4),
+                      color: (isLight ? Colors.black : Colors.white)
+                          .withOpacity(0.4),
                       fontSize: 9,
                     ),
                   ),
@@ -472,7 +504,10 @@ class _ModernMusicHub extends StatelessWidget {
               iconSize: 18,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
-              icon: Icon(Icons.skip_previous_rounded, color: isLight ? Colors.black : Colors.white),
+              icon: Icon(
+                Icons.skip_previous_rounded,
+                color: isLight ? Colors.black : Colors.white,
+              ),
             ),
             const SizedBox(width: 5),
             IconButton(
@@ -481,8 +516,10 @@ class _ModernMusicHub extends StatelessWidget {
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
               icon: Icon(
-                music.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                color: isLight ? Colors.black : Colors.white
+                music.isPlaying
+                    ? Icons.pause_rounded
+                    : Icons.play_arrow_rounded,
+                color: isLight ? Colors.black : Colors.white,
               ),
             ),
             const SizedBox(width: 5),
@@ -491,7 +528,10 @@ class _ModernMusicHub extends StatelessWidget {
               iconSize: 18,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
-              icon: Icon(Icons.skip_next_rounded, color: isLight ? Colors.black : Colors.white),
+              icon: Icon(
+                Icons.skip_next_rounded,
+                color: isLight ? Colors.black : Colors.white,
+              ),
             ),
           ],
         ),
@@ -505,7 +545,11 @@ class _TeslaRoadPainter extends CustomPainter {
   final double speed;
   final Color color;
 
-  _TeslaRoadPainter({required this.animationValue, required this.speed, this.color = Colors.white});
+  _TeslaRoadPainter({
+    required this.animationValue,
+    required this.speed,
+    this.color = Colors.white,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -551,12 +595,12 @@ class _TeslaRoadPainter extends CustomPainter {
       ..strokeWidth = 2;
 
     double moveOffset = (animationValue * 100) % 50;
-    
+
     // 4 dividers
     for (double factor in [0.1, 0.35, 0.65, 0.9]) {
-       final startX = w * factor;
-       final start = Offset(startX, h);
-       _drawDashedLine(canvas, start, vanishPoint, moveOffset, dashPaint);
+      final startX = w * factor;
+      final start = Offset(startX, h);
+      _drawDashedLine(canvas, start, vanishPoint, moveOffset, dashPaint);
     }
 
     // Draw Trees Silhouettes
@@ -566,20 +610,20 @@ class _TeslaRoadPainter extends CustomPainter {
   void _drawTrees(Canvas canvas, Size size, Offset vanish) {
     final w = size.width;
     final h = size.height;
-    
+
     final treePaint = Paint()..color = Colors.white.withOpacity(0.15);
-    
+
     for (int i = 0; i < 6; i++) {
       double t = (animationValue + (i / 6)) % 1.0;
       double perspectiveScale = math.pow(t, 3).toDouble();
-      
+
       for (double side in [-1, 1]) {
         double x = vanish.dx + (side * w * 0.8 * perspectiveScale);
         double y = vanish.dy + (h - vanish.dy) * perspectiveScale;
-        
+
         double treeHeight = 150 * perspectiveScale;
         double treeWidth = 60 * perspectiveScale;
-        
+
         if (perspectiveScale > 0.05) {
           final treePath = Path()
             ..moveTo(x, y)
@@ -593,7 +637,13 @@ class _TeslaRoadPainter extends CustomPainter {
     }
   }
 
-  void _drawDashedLine(Canvas canvas, Offset start, Offset end, double offset, Paint paint) {
+  void _drawDashedLine(
+    Canvas canvas,
+    Offset start,
+    Offset end,
+    double offset,
+    Paint paint,
+  ) {
     final direction = end - start;
     final distance = direction.distance;
     final unitVector = direction / distance;
@@ -604,9 +654,9 @@ class _TeslaRoadPainter extends CustomPainter {
       // Perspective shortening: further dashes are shorter
       double ratio = 1 - (d / distance);
       double dashLen = 30 * math.max(0.2, ratio);
-      
+
       final p2 = start + unitVector * (math.min(d + dashLen, distance));
-      
+
       paint.color = Colors.white.withOpacity(0.6 * math.max(0.1, ratio));
       canvas.drawLine(p1, p2, paint);
       d += dashLen * 2;

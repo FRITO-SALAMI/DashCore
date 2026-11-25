@@ -47,6 +47,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Future<void> _requestPermissions() async {
     if (_isRequestingPermissions) return;
+
+    final continueRequest = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('UBICACIÓN Y DISPOSITIVO OBD2'),
+        content: const Text(
+          'DashCore utiliza tu ubicación precisa mientras conduces para calcular y mostrar velocidad, movimiento, recorrido y posición en el mapa. '
+          'También usa Bluetooth para encontrar y comunicarse con tu adaptador OBD2. Al iniciar sesión puede guardarse una ubicación aproximada una sola vez. Al aceptar la política se habilitan muestras OBD para mejorar rangos y alertas; nunca incluyen tu recorrido GPS y pueden desactivarse en Ajustes. '
+          'DashCore no vende estos datos ni los usa para publicidad. Puedes revisar los permisos y desactivar “Mantener app activa” desde Ajustes.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('AHORA NO'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('CONTINUAR'),
+          ),
+        ],
+      ),
+    );
+    if (continueRequest != true || !mounted) return;
     setState(() => _isRequestingPermissions = true);
 
     final deviceInfo = DeviceInfoPlugin();
@@ -57,14 +81,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       Permission.notification,
       Permission.location,
       Permission.bluetooth,
-      Permission.camera, // For potential future use or AR
     ];
 
     if (sdk >= 31) {
       permissionsToRequest.addAll([
         Permission.bluetoothScan,
         Permission.bluetoothConnect,
-        Permission.bluetoothAdvertise,
       ]);
       permissionsToRequest.add(Permission.locationWhenInUse);
     }
@@ -93,14 +115,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         }
       });
     }
-  }
-
-  void _skipTutorial() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_done', true);
-    final settings = context.read<DashSettingsProvider>();
-    settings.setTutorialActive(false);
-    widget.onFinish();
   }
 
   void _nextPage() {
@@ -168,39 +182,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               _buildLanguagePage(loc, themeColor, settings),
             ],
           ),
-
-          // Top Navigation (Skip/Next) - Visible from Step 2 (Page 1)
-          if (_currentPage >= 1)
-            Positioned(
-              top: 40,
-              left: 20,
-              right: 20,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  TextButton(
-                    onPressed: _skipTutorial,
-                    child: Text(
-                      isSpanish ? 'OMITIR' : 'SKIP',
-                      style: const TextStyle(
-                        color: Colors.white38,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: _nextPage,
-                    child: Text(
-                      isSpanish ? 'SIGUIENTE' : 'NEXT',
-                      style: TextStyle(
-                        color: themeColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
 
           Positioned(
             bottom: 40,
@@ -293,7 +274,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         children: [
           Hero(
             tag: 'logo',
-            child: Image.asset('assets/icons/dashcore_logo.png', width: 150),
+            child: Image.asset('assets/icons/dashcore_v2.png', width: 150),
           ),
           const SizedBox(height: 50),
           const Text(
@@ -486,6 +467,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             );
           },
         ),
+        const SizedBox(height: 10),
+        TextButton.icon(
+          onPressed: _nextPage,
+          icon: const Icon(Icons.schedule_rounded, size: 18),
+          label: Text(
+            isSpanish ? 'AGREGAR MÁS ADELANTE' : 'ADD LATER',
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
       ],
     );
   }
@@ -553,50 +543,40 @@ class _BootCinematicState extends State<_BootCinematic>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3000),
-    )..forward();
+      duration: const Duration(milliseconds: 2200),
+    )..repeat(reverse: true);
 
     _needle = TweenSequence<double>([
-      // Aggressive sweep to max
       TweenSequenceItem(
-        tween: Tween(begin: 0.0, end: 1.0).chain(CurveTween(curve: Curves.easeOutQuart)),
-        weight: 30,
+        tween: Tween(
+          begin: 0.0,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeOutExpo)),
+        weight: 55,
       ),
-      // Slight bounce at the top
       TweenSequenceItem(
-        tween: Tween(begin: 1.0, end: 0.9).chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 10,
-      ),
-      // Hold with jitter (handled by _jitter)
-      TweenSequenceItem(tween: ConstantTween(0.9), weight: 20),
-      // Smooth return to zero
-      TweenSequenceItem(
-        tween: Tween(begin: 0.9, end: 0.0).chain(CurveTween(curve: Curves.easeInOutCubic)),
-        weight: 40,
+        tween: Tween(
+          begin: 1.0,
+          end: 0.0,
+        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+        weight: 45,
       ),
     ]).animate(_controller);
-
     _jitter = TweenSequence<double>([
-      TweenSequenceItem(tween: ConstantTween(0.0), weight: 40),
-      TweenSequenceItem(
-        tween: TweenSequence<double>([
-          TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.02), weight: 1),
-          TweenSequenceItem(tween: Tween(begin: 0.02, end: -0.02), weight: 1),
-        ]),
-        weight: 20,
-      ),
-      TweenSequenceItem(tween: ConstantTween(0.0), weight: 40),
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.025), weight: 25),
+      TweenSequenceItem(tween: Tween(begin: 0.025, end: -0.02), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: -0.02, end: 0.0), weight: 25),
     ]).animate(_controller);
 
     _logoOpacity = CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0.6, 0.9, curve: Curves.easeIn),
+      curve: const Interval(0.05, 0.35, curve: Curves.easeIn),
     );
 
     _logoScale = Tween<double>(begin: 0.7, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.6, 1.0, curve: Curves.easeOutBack),
+        curve: const Interval(0.05, 0.55, curve: Curves.easeOutBack),
       ),
     );
   }
@@ -622,7 +602,9 @@ class _BootCinematicState extends State<_BootCinematic>
                   width: 350,
                   height: 250,
                   child: CustomPaint(
-                    painter: _BootGaugePainter(progress: (_needle.value + _jitter.value).clamp(0.0, 1.0)),
+                    painter: _BootGaugePainter(
+                      progress: (_needle.value + _jitter.value).clamp(0.0, 1.0),
+                    ),
                   ),
                 ),
                 Opacity(
@@ -632,10 +614,7 @@ class _BootCinematicState extends State<_BootCinematic>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Image.asset(
-                          'assets/icons/dashcore_logo.png',
-                          width: 130,
-                        ),
+                        Image.asset('assets/icons/dashcore_v2.png', width: 130),
                         const SizedBox(height: 20),
                         const Text(
                           'DASHCORE',

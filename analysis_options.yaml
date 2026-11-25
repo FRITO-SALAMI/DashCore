@@ -1,5 +1,7 @@
 analyzer:
   exclude:
+    - .artifacts/**
+    - artifacts/**
     - build/**
     - android/**
     - ios/**

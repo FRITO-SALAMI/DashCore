@@ -1,3 +1,4 @@
+import '../display_units.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -32,19 +33,25 @@ class GlowRedDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isCompetitive = rpm > 5000;
     // Force red if the provided accentColor is the general cyan default
-    final effectiveColor = accentColor.value == 0xFF00E5FF ? const Color(0xFFFF0000) : accentColor;
-    final currentAccent = isCompetitive ? const Color(0xFFFF1111) : effectiveColor;
+    final effectiveColor = accentColor.value == 0xFF00E5FF
+        ? const Color(0xFFFF0000)
+        : accentColor;
+    final currentAccent = isCompetitive
+        ? const Color(0xFFFF1111)
+        : effectiveColor;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       color: isCompetitive ? Colors.red.withOpacity(0.08) : Colors.black,
       child: Stack(
         children: [
-          DashboardBackground(
-            backgroundImage: backgroundImage,
-            isAssetBackground: isAssetBackground,
-            opacity: 0.4,
-          ),
+          const Positioned.fill(child: ColoredBox(color: Colors.black)),
+          if (backgroundImage != null)
+            DashboardBackground(
+              backgroundImage: backgroundImage,
+              isAssetBackground: isAssetBackground,
+              opacity: .28,
+            ),
 
           // Background Glow Path
           Positioned.fill(
@@ -54,18 +61,13 @@ class GlowRedDashboard extends StatelessWidget {
           ),
 
           // Top Header: Stats
-          const Positioned(
-            top: 30,
-            right: 60,
-            child: Row(
-              children: [],
-            ),
-          ),
+          const Positioned(top: 30, right: 60, child: Row(children: [])),
 
           // Main Gauges (Central 4-Circle Cluster - SEPARATED)
           Center(
             child: SizedBox(
-              width: 750, height: 480,
+              width: 750,
+              height: 480,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
@@ -92,33 +94,33 @@ class GlowRedDashboard extends StatelessWidget {
                     child: _GlowCircularGauge(
                       value: speed,
                       maxValue: 260,
-                      label: 'KM/H',
+                      label: speedUnitOf(context),
                       color: currentAccent,
                       size: 380,
                     ),
                   ),
 
-                  // Inner Circles: Temp and Volt (Closer and lower)
+                  // Inner Circles: Temp and Volt, separated for readability.
                   Positioned(
-                    left: 230,
-                    bottom: 80,
+                    left: 248,
+                    bottom: 105,
                     child: _GlowCircularGauge(
                       value: coolantTemp,
                       maxValue: 130,
                       label: 'TEMP',
                       color: currentAccent,
-                      size: 130,
+                      size: 145,
                     ),
                   ),
                   Positioned(
-                    right: 230,
-                    bottom: 80,
+                    right: 248,
+                    bottom: 105,
                     child: _GlowCircularGauge(
                       value: voltage.toInt(),
                       maxValue: 16,
                       label: 'VOLT',
                       color: currentAccent,
-                      size: 130,
+                      size: 145,
                       isVolt: true,
                       voltValue: voltage,
                     ),
@@ -167,13 +169,20 @@ class _GlowMusicHub extends StatelessWidget {
               children: [
                 Text(
                   music.trackTitle,
-                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   music.artistName.toUpperCase(),
-                  style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 8),
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.4),
+                    fontSize: 8,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -182,11 +191,17 @@ class _GlowMusicHub extends StatelessWidget {
           ),
           const SizedBox(width: 5),
           _GlowMusicButton(
-            icon: music.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+            icon: music.isPlaying
+                ? Icons.pause_rounded
+                : Icons.play_arrow_rounded,
             onTap: music.playPause,
-            color: color
+            color: color,
           ),
-          _GlowMusicButton(icon: Icons.skip_next_rounded, onTap: music.next, color: color),
+          _GlowMusicButton(
+            icon: Icons.skip_next_rounded,
+            onTap: music.next,
+            color: color,
+          ),
         ],
       ),
     );
@@ -199,7 +214,12 @@ class _GlowMusicButton extends StatelessWidget {
   final Color color;
   final bool isLarge;
 
-  const _GlowMusicButton({required this.icon, required this.onTap, required this.color, this.isLarge = false});
+  const _GlowMusicButton({
+    required this.icon,
+    required this.onTap,
+    required this.color,
+    this.isLarge = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -245,10 +265,7 @@ class _GlowCircularGauge extends StatelessWidget {
         children: [
           CustomPaint(
             size: Size(size, size),
-            painter: _GlowGaugePainter(
-              progress: progress,
-              color: color,
-            ),
+            painter: _GlowGaugePainter(progress: progress, color: color),
           ),
           Column(
             mainAxisSize: MainAxisSize.min,
@@ -299,21 +316,39 @@ class _GlowGaugePainter extends CustomPainter {
       ..color = accentColor.withOpacity(0.2)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius - 5), startAngle, sweepAngle, false, outerPaint);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius - 5),
+      startAngle,
+      sweepAngle,
+      false,
+      outerPaint,
+    );
 
     final glowPaint = Paint()
       ..color = accentColor.withOpacity(0.5)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 12
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15);
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius - 20), startAngle, sweepAngle, false, glowPaint);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius - 20),
+      startAngle,
+      sweepAngle,
+      false,
+      glowPaint,
+    );
 
     final solidPaint = Paint()
       ..color = accentColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4
       ..strokeCap = StrokeCap.round;
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius - 20), startAngle, sweepAngle * progress, false, solidPaint);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius - 20),
+      startAngle,
+      sweepAngle * progress,
+      false,
+      solidPaint,
+    );
   }
 
   @override
@@ -326,7 +361,9 @@ class _BackgroundPathPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color.withOpacity(0.05)..style = PaintingStyle.fill;
+    final paint = Paint()
+      ..color = color.withOpacity(0.05)
+      ..style = PaintingStyle.fill;
     final path = Path();
     final w = size.width;
     final h = size.height;
@@ -340,7 +377,10 @@ class _BackgroundPathPainter extends CustomPainter {
     path.close();
 
     canvas.drawPath(path, paint);
-    final borderPaint = Paint()..color = color.withOpacity(0.1)..style = PaintingStyle.stroke..strokeWidth = 2;
+    final borderPaint = Paint()
+      ..color = color.withOpacity(0.1)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
     canvas.drawPath(path, borderPaint);
   }
 

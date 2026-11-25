@@ -1,3 +1,6 @@
+import 'dart:ffi' show IntPtr, sizeOf;
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -5,7 +8,7 @@ import 'package:provider/provider.dart';
 
 import 'services/bluetooth_obd_connection.dart';
 import 'services/supabase_service.dart';
-import 'services/analytics_service.dart';
+import 'services/sync_service.dart';
 import 'providers/obd_provider.dart';
 import 'providers/bluetooth_provider.dart';
 import 'providers/dash_settings_provider.dart';
@@ -13,16 +16,23 @@ import 'providers/music_provider.dart';
 import 'core/app_themes.dart';
 import 'screens/root_screen.dart';
 import 'widget/reconnection_banner.dart';
+import 'widget/animated_startup_splash.dart';
 import 'utils/app_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final arm32 = Platform.isAndroid && sizeOf<IntPtr>() == 4;
+  PaintingBinding.instance.imageCache
+    ..maximumSizeBytes = (arm32 ? 16 : 32) * 1024 * 1024
+    ..maximumSize = arm32 ? 40 : 80;
 
   try {
     await SupabaseService.initialize().timeout(
       const Duration(seconds: 5),
       onTimeout: () => debugPrint('⚠️ Supabase init timeout'),
     );
+
+    await SyncService.instance.initialize();
   } catch (e) {
     debugPrint('⚠️ Supabase init error: $e');
   }
@@ -30,12 +40,9 @@ Future<void> main() async {
   // Handler global de errores para analítica
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
-    AnalyticsService.instance.logEvent(
-      'error',
-      data: {
-        'exception': details.exceptionAsString(),
-        'stack': details.stack.toString().split('\n').take(10).join('\n'),
-      },
+    SyncService.instance.logError(
+      details.exceptionAsString(),
+      details.stack.toString(),
     );
   };
 
@@ -63,6 +70,10 @@ Future<void> main() async {
             final obd = ObdProvider(
               BluetoothObdConnection(context.read<BluetoothProvider>()),
             );
+
+            obd.onAccStateChanged = (sleeping) {
+              context.read<DashSettingsProvider>().setAppActive(!sleeping);
+            };
 
             // Link stats update to DashSettingsProvider
             obd.onStatsUpdate = (speed, delta) {
@@ -101,50 +112,51 @@ class DashCoreApp extends StatelessWidget {
       theme: AppThemes.darkTheme,
       home: const RootScreen(),
       builder: (context, child) {
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            child ?? const SizedBox.shrink(),
-            Consumer2<BluetoothProvider, ObdProvider>(
-              builder: (context, bluetoothProvider, obdProvider, _) {
-                final bool isBluetoothReconnecting =
-                    bluetoothProvider.isReconnectingBackground;
+        return AnimatedStartupSplash(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              child ?? const SizedBox.shrink(),
+              Consumer2<BluetoothProvider, ObdProvider>(
+                builder: (context, bluetoothProvider, obdProvider, _) {
+                  final bool isBluetoothReconnecting =
+                      bluetoothProvider.isReconnectingBackground;
 
-                final bool isObdRecovering =
-                    obdProvider.isRealMode &&
-                    obdProvider.state == ObdConnectionState.initializing;
+                  final bool isObdRecovering =
+                      obdProvider.isRealMode &&
+                      obdProvider.state != ObdConnectionState.ready;
 
-                final bool showBanner =
-                    isBluetoothReconnecting || isObdRecovering;
+                  final bool showBanner =
+                      isBluetoothReconnecting || isObdRecovering;
 
-                final loc = AppLocalizations.of(context);
+                  final loc = AppLocalizations.of(context);
 
-                final String message = isBluetoothReconnecting
-                    ? loc.translate('reconnecting')
-                    : isObdRecovering
-                    ? loc.translate(obdProvider.initMessage)
-                    : '';
+                  final String message = isObdRecovering
+                      ? loc.translate('connecting_obd_dots')
+                      : isBluetoothReconnecting
+                      ? loc.translate('reconnecting')
+                      : '';
 
-                return AnimatedPositioned(
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeOutCubic,
-                  top: showBanner
-                      ? MediaQuery.of(context).padding.top + 10
-                      : -100,
-                  left: 16,
-                  right: 16,
-                  child: IgnorePointer(
-                    ignoring: !showBanner,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 300),
-                      opacity: showBanner ? 1.0 : 0.0,
-                      child: ReconnectionBanner(message: message),
+                  return AnimatedPositioned(
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeOutCubic,
+                    top: showBanner
+                        ? MediaQuery.of(context).padding.top + 10
+                        : -100,
+                    right: 16,
+                    child: IgnorePointer(
+                      ignoring: !showBanner,
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 300),
+                        opacity: showBanner ? 1.0 : 0.0,
+                        child: ReconnectionBanner(message: message),
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
-          ],
+                  );
+                },
+              ),
+            ],
+          ),
         );
       },
     );

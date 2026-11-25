@@ -14,7 +14,12 @@ class BootReceiver : BroadcastReceiver() {
         )
         
         if (actions.contains(intent.action)) {
-            // Start Foreground Service - Primary goal on boot
+            val prefs = context.getSharedPreferences("dashcore_persistence", Context.MODE_PRIVATE)
+            if (intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) {
+                prefs.edit().putBoolean("acc_sleeping", false).apply()
+            }
+            if (!prefs.getBoolean("keep_app_active", false) || prefs.getBoolean("service_explicitly_stopped", true) || prefs.getBoolean("acc_sleeping", false)) return
+            // Restore only a previously enabled service.
             val serviceIntent = Intent(context, DashCoreService::class.java)
             try {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {

@@ -45,6 +45,17 @@ class BluetoothProvider extends ChangeNotifier {
   bool _isReconnectingBackground = false;
   bool get isReconnectingBackground => _isReconnectingBackground;
 
+  bool _accSleeping = false;
+  Future<void> setAccSleeping(bool sleeping) async {
+    _accSleeping = sleeping;
+    if (sleeping) {
+      _connectionId++;
+      _isConnecting = false;
+      _isReconnectingBackground = false;
+      await _stopScan();
+      await disconnect();
+    }
+  }
   Timer? _scanTimer;
 
   bool _isHardwareOn = false;
@@ -58,7 +69,7 @@ class BluetoothProvider extends ChangeNotifier {
   BluetoothProvider() {
     _bluetooth.adapterStateNow.then((BluetoothAdapterState state) {
       _isHardwareOn = state == BluetoothAdapterState.on;
-      if (_isHardwareOn) _autoReconnect();
+
       notifyListeners();
     });
 
@@ -78,38 +89,11 @@ class BluetoothProvider extends ChangeNotifier {
           _pendingScan = false;
           startScan();
         } else {
-          _autoReconnect();
+
         }
       }
       notifyListeners();
     });
-  }
-
-  Future<void> _autoReconnect() async {
-    final prefs = await SharedPreferences.getInstance();
-    final lastAddress = prefs.getString('last_obd_address');
-    final lastName = prefs.getString('last_obd_name');
-
-    if (lastAddress != null && lastName != null && !_isConnected && !_isConnecting) {
-      developer.log("🔄 Auto-reconnecting to $lastName ($lastAddress)", name: 'reBlue');
-      
-      final device = ObdDevice(name: lastName, address: lastAddress, isBle: false);
-      
-      // Try to find it in bonded devices first
-      final bonded = await _bluetooth.bondedDevices;
-      if (bonded != null) {
-        for (var d in bonded) {
-          if (d.address == lastAddress) {
-             _deviceMap[d.address] = d;
-             connectToDevice(device);
-             return;
-          }
-        }
-      }
-      
-      // If not bonded, it might need a scan or it won't connect directly.
-      // For now, we only auto-reconnect if it was bonded or recently seen.
-    }
   }
 
   void _addDeviceToList(BluetoothDevice device) {
@@ -126,6 +110,7 @@ class BluetoothProvider extends ChangeNotifier {
   }
 
   Future<BluetoothScanResult> startScan() async {
+    if (_accSleeping) return BluetoothScanResult.notStarted;
     if (_isScanning) return BluetoothScanResult.started;
 
     developer.log("Requesting permissions", name: 'reBlue');
@@ -168,6 +153,7 @@ class BluetoothProvider extends ChangeNotifier {
         }
       }
 
+      if (_accSleeping) return BluetoothScanResult.notStarted;
       _bluetooth.startScan();
       developer.log("Scan started", name: 'reBlue');
 
@@ -210,7 +196,8 @@ class BluetoothProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> connectToDevice(ObdDevice device) async {
+  Future<bool> connectToDevice(ObdDevice device, {int maxAttempts = 3}) async {
+    if (_accSleeping) return false;
     if (_isConnected && _connectedDevice?.address == device.address) {
       return true;
     }
@@ -250,7 +237,7 @@ class BluetoothProvider extends ChangeNotifier {
 
     final targetDevice = _deviceMap[device.address]!;
 
-    for (int i = 1; i <= 3; i++) {
+    for (int i = 1; i <= maxAttempts; i++) {
       try {
         await _bluetooth.bondDevice(targetDevice.address);
         if (currentId != _connectionId) return false;
@@ -267,6 +254,7 @@ class BluetoothProvider extends ChangeNotifier {
           return false;
         }
 
+        if (newSocket == null) throw StateError('Bluetooth connection unavailable');
         _connection = newSocket;
         _connectedDevice = device;
         _isConnected = true;
@@ -284,7 +272,7 @@ class BluetoothProvider extends ChangeNotifier {
         return true;
       } catch (e) {
         if (currentId != _connectionId) return false;
-        if (i < 3) {
+        if (i < maxAttempts) {
           await Future.delayed(const Duration(seconds: 2));
         } else {
           _isConnected = false;
@@ -342,43 +330,11 @@ class BluetoothProvider extends ChangeNotifier {
   }
 
   Future<void> _startBackgroundReconnect() async {
-    if (_connectedDevice == null) return;
-    _connectionId++;
-    final int currentId = _connectionId;
-    _isReconnectingBackground = true;
+    _isConnected = false;
+    _isConnecting = false;
+    _isReconnectingBackground = false;
     notifyListeners();
-
-    final physicalDevice = _deviceMap[_connectedDevice!.address];
-    if (physicalDevice == null) {
-      _isReconnectingBackground = false;
-      disconnect(isIntentional: true);
-      return;
-    }
-
-    for (int i = 1; i <= 3; i++) {
-      try {
-        await Future.delayed(const Duration(seconds: 4));
-        if (currentId != _connectionId) return;
-
-        final socket = await _bluetooth.connect(physicalDevice.address).timeout(const Duration(seconds: 5));
-        if (currentId != _connectionId) {
-          await socket?.finish();
-          return;
-        }
-
-        _connection = socket;
-        _isConnected = true;
-        _isReconnectingBackground = false;
-        _setupListen();
-        notifyListeners();
-        return;
-      } catch (e) {
-        if (i == 3) {
-          _isReconnectingBackground = false;
-          await disconnect();
-        }
-      }
-    }
+    // ObdProvider owns the ten-second retry policy and user's OBD preference.
   }
 
   void cancelConnection() {

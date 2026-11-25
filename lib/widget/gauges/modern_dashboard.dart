@@ -33,41 +33,41 @@ class ModernDashboard extends StatelessWidget {
     final Color currentColor = isExtreme ? Colors.redAccent : accentColor;
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF010204),
-      ),
+      decoration: const BoxDecoration(color: Color(0xFF010204)),
       child: Stack(
         children: [
           // Dynamic Hex Grid
-          Positioned.fill(child: _DynamicHexGrid(color: accentColor, rpm: rpm)),
+          Positioned.fill(
+            child: _DynamicHexGrid(color: accentColor, rpm: rpm),
+          ),
 
           DashboardBackground(
             backgroundImage: backgroundImage,
             isAssetBackground: isAssetBackground,
             opacity: 0.1,
           ),
-          
+
           Center(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 // LEFT: THERMAL GADGET
                 _TechGadget(
-                  label: 'THERMAL CORE', 
-                  value: '$coolantTemp', 
-                  unit: tempUnit, 
-                  icon: Icons.thermostat_auto_rounded, 
+                  label: 'THERMAL CORE',
+                  value: '$coolantTemp',
+                  unit: tempUnit,
+                  icon: Icons.thermostat_auto_rounded,
                   color: accentColor,
                   progress: (coolantTemp / 120).clamp(0.0, 1.0),
                 ),
-                
+
                 // CENTER: QUANTUM SPEEDO
                 Stack(
                   alignment: Alignment.center,
                   clipBehavior: Clip.none,
                   children: [
                     _FuturisticSpeedo(speed: speed, color: currentColor),
-                    
+
                     // RPM Small Circle next to speed
                     Positioned(
                       right: -80,
@@ -79,13 +79,13 @@ class ModernDashboard extends StatelessWidget {
                     ),
                   ],
                 ),
-                
+
                 // RIGHT: ENERGY GADGET
                 _TechGadget(
-                  label: 'ENERGY FLOW', 
-                  value: voltage.toStringAsFixed(1), 
-                  unit: 'V', 
-                  icon: Icons.bolt_rounded, 
+                  label: 'ENERGY FLOW',
+                  value: voltage.toStringAsFixed(1),
+                  unit: 'V',
+                  icon: Icons.bolt_rounded,
                   color: accentColor,
                   progress: ((voltage - 9) / 7).clamp(0.0, 1.0),
                   isRight: true,
@@ -94,14 +94,24 @@ class ModernDashboard extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // Scanning Line
           _ScanningLine(color: accentColor),
 
           // Glow Decoration
           Positioned(
-            bottom: -100, left: 0, right: 0, height: 200,
-            child: Container(decoration: BoxDecoration(gradient: RadialGradient(colors: [accentColor.withOpacity(0.2), Colors.transparent], radius: 1.5))),
+            bottom: -100,
+            left: 0,
+            right: 0,
+            height: 200,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  colors: [accentColor.withOpacity(0.2), Colors.transparent],
+                  radius: 1.5,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -117,24 +127,34 @@ class _DynamicHexGrid extends StatefulWidget {
   State<_DynamicHexGrid> createState() => _DynamicHexGridState();
 }
 
-class _DynamicHexGridState extends State<_DynamicHexGrid> with SingleTickerProviderStateMixin {
+class _DynamicHexGridState extends State<_DynamicHexGrid>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 10))..repeat();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 10),
+    )..repeat();
   }
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) => CustomPaint(
-        painter: _HexGridPainter(color: widget.color, offset: _controller.value, pulse: widget.rpm / 8000),
+        painter: _HexGridPainter(
+          color: widget.color,
+          offset: _controller.value,
+          pulse: widget.rpm / 8000,
+        ),
       ),
     );
   }
@@ -151,10 +171,10 @@ class _TechGadget extends StatelessWidget {
   final bool hideProgress;
 
   const _TechGadget({
-    required this.label, 
-    required this.value, 
-    required this.unit, 
-    required this.icon, 
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.icon,
     required this.color,
     required this.progress,
     this.isRight = false,
@@ -165,14 +185,24 @@ class _TechGadget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: isRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: isRight
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (!isRight) Icon(icon, color: color, size: 20),
             const SizedBox(width: 8),
-            Text(label, style: TextStyle(color: color.withOpacity(0.4), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2)),
+            Text(
+              label,
+              style: TextStyle(
+                color: color.withOpacity(0.4),
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2,
+              ),
+            ),
             const SizedBox(width: 8),
             if (isRight) Icon(icon, color: color, size: 20),
           ],
@@ -183,9 +213,23 @@ class _TechGadget extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            Text(value, style: const TextStyle(color: Colors.white, fontSize: 56, fontWeight: FontWeight.w100)),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 56,
+                fontWeight: FontWeight.w100,
+              ),
+            ),
             const SizedBox(width: 4),
-            Text(unit, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(
+              unit,
+              style: TextStyle(
+                color: color,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
         if (!hideProgress) ...[
@@ -193,7 +237,10 @@ class _TechGadget extends StatelessWidget {
           Container(
             width: 180,
             height: 4,
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(2)),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(2),
+            ),
             child: Stack(
               children: [
                 FractionallySizedBox(
@@ -201,7 +248,12 @@ class _TechGadget extends StatelessWidget {
                   child: Container(
                     decoration: BoxDecoration(
                       color: color,
-                      boxShadow: [BoxShadow(color: color.withOpacity(0.5), blurRadius: 10)],
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withOpacity(0.5),
+                          blurRadius: 10,
+                        ),
+                      ],
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -222,29 +274,41 @@ class _ScanningLine extends StatefulWidget {
   State<_ScanningLine> createState() => _ScanningLineState();
 }
 
-class _ScanningLineState extends State<_ScanningLine> with SingleTickerProviderStateMixin {
+class _ScanningLineState extends State<_ScanningLine>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat();
   }
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) => Positioned(
         top: MediaQuery.of(context).size.height * _controller.value,
-        left: 0, right: 0, height: 2,
+        left: 0,
+        right: 0,
+        height: 2,
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.transparent, widget.color.withOpacity(0.3), Colors.transparent],
+              colors: [
+                Colors.transparent,
+                widget.color.withOpacity(0.3),
+                Colors.transparent,
+              ],
             ),
           ),
         ),
@@ -272,8 +336,14 @@ class _HexGridPainter extends CustomPainter {
     canvas.save();
     canvas.translate(0, offset * 100);
 
-    for (double y = -hexHeight; y < size.height + hexHeight; y += hexHeight * 0.75) {
-      double offsetX = ( (y / (hexHeight * 0.75)).round() % 2 == 0) ? 0 : hexWidth / 2;
+    for (
+      double y = -hexHeight;
+      y < size.height + hexHeight;
+      y += hexHeight * 0.75
+    ) {
+      double offsetX = ((y / (hexHeight * 0.75)).round() % 2 == 0)
+          ? 0
+          : hexWidth / 2;
       for (double x = -hexWidth; x < size.width + hexWidth; x += hexWidth) {
         _drawHex(canvas, Offset(x + offsetX, y), radius, paint);
       }
@@ -309,17 +379,19 @@ class _FuturisticSpeedo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 450, height: 450,
+      width: 450,
+      height: 450,
       child: Stack(
         alignment: Alignment.center,
         children: [
           // Quantum Rings
           _QuantumRing(radius: 200, color: color.withOpacity(0.1), speed: 2),
           _QuantumRing(radius: 180, color: color.withOpacity(0.2), speed: -3),
-          
+
           // Outer Glow Circle
           Container(
-            width: 380, height: 380,
+            width: 380,
+            height: 380,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(color: color.withOpacity(0.05), width: 2),
@@ -332,18 +404,32 @@ class _FuturisticSpeedo extends StatelessWidget {
             children: [
               Text(
                 '$speed',
-                style: const TextStyle(color: Colors.white, fontSize: 160, fontWeight: FontWeight.w900, letterSpacing: -10, height: 1.0),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: speed >= 100 ? 132 : 160,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: speed >= 100 ? -7 : -10,
+                  height: 1.0,
+                ),
               ),
               const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(color: color, width: 2),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   'VELOCITY',
-                  style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 8),
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 8,
+                  ),
                 ),
               ),
             ],
@@ -369,7 +455,11 @@ class _RpmCircle extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             // Rotating Quantum Ring for RPM
-            _QuantumRing(radius: 75, color: color.withOpacity(0.15), speed: 1.5),
+            _QuantumRing(
+              radius: 75,
+              color: color.withOpacity(0.15),
+              speed: 1.5,
+            ),
             _QuantumRing(radius: 68, color: color.withOpacity(0.1), speed: -2),
 
             SizedBox(
@@ -387,11 +477,20 @@ class _RpmCircle extends StatelessWidget {
               children: [
                 Text(
                   (rpm / 1000).toStringAsFixed(1),
-                  style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 Text(
                   'K-RPM',
-                  style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
                 ),
               ],
             ),
@@ -406,23 +505,33 @@ class _QuantumRing extends StatefulWidget {
   final double radius;
   final Color color;
   final double speed;
-  const _QuantumRing({required this.radius, required this.color, required this.speed});
+  const _QuantumRing({
+    required this.radius,
+    required this.color,
+    required this.speed,
+  });
   @override
   State<_QuantumRing> createState() => _QuantumRingState();
 }
 
-class _QuantumRingState extends State<_QuantumRing> with SingleTickerProviderStateMixin {
+class _QuantumRingState extends State<_QuantumRing>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 5))..repeat();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 5),
+    )..repeat();
   }
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -430,14 +539,30 @@ class _QuantumRingState extends State<_QuantumRing> with SingleTickerProviderSta
       builder: (context, _) => Transform.rotate(
         angle: _controller.value * 2 * math.pi * widget.speed,
         child: Container(
-          width: widget.radius * 2, height: widget.radius * 2,
+          width: widget.radius * 2,
+          height: widget.radius * 2,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: widget.color, width: 2, style: BorderStyle.solid),
+            border: Border.all(
+              color: widget.color,
+              width: 2,
+              style: BorderStyle.solid,
+            ),
           ),
           child: Stack(
             children: [
-              Positioned(top: 0, left: widget.radius - 5, width: 10, height: 10, child: Container(decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle))),
+              Positioned(
+                top: 0,
+                left: widget.radius - 5,
+                width: 10,
+                height: 10,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: widget.color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
             ],
           ),
         ),

@@ -9,6 +9,8 @@ class GadgetConfig {
   String? imagePath;
   bool visible;
   bool locked;
+  double fontScale;
+  String fontFamily;
 
   GadgetConfig({
     required this.id,
@@ -21,6 +23,8 @@ class GadgetConfig {
     this.imagePath,
     this.visible = true,
     this.locked = false,
+    this.fontScale = 1.0,
+    this.fontFamily = 'Inter',
   });
 
   GadgetConfig copyWith({
@@ -32,6 +36,8 @@ class GadgetConfig {
     String? imagePath,
     bool? visible,
     bool? locked,
+    double? fontScale,
+    String? fontFamily,
   }) {
     return GadgetConfig(
       id: id,
@@ -44,32 +50,38 @@ class GadgetConfig {
       imagePath: imagePath ?? this.imagePath,
       visible: visible ?? this.visible,
       locked: locked ?? this.locked,
+      fontScale: fontScale ?? this.fontScale,
+      fontFamily: fontFamily ?? this.fontFamily,
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'label': label,
-        'relativeX': relativeX,
-        'relativeY': relativeY,
-        'relativeWidth': relativeWidth,
-        'relativeHeight': relativeHeight,
-        'zIndex': zIndex,
-        'imagePath': imagePath,
-        'visible': visible,
-        'locked': locked,
-      };
+    'id': id,
+    'label': label,
+    'relativeX': relativeX,
+    'relativeY': relativeY,
+    'relativeWidth': relativeWidth,
+    'relativeHeight': relativeHeight,
+    'zIndex': zIndex,
+    'imagePath': imagePath,
+    'visible': visible,
+    'locked': locked,
+    'fontScale': fontScale,
+    'fontFamily': fontFamily,
+  };
 
   factory GadgetConfig.fromJson(Map<String, dynamic> json) => GadgetConfig(
-        id: json['id'] as String,
-        label: json['label'] as String,
-        relativeX: (json['relativeX'] as num).toDouble(),
-        relativeY: (json['relativeY'] as num).toDouble(),
-        relativeWidth: (json['relativeWidth'] as num).toDouble(),
-        relativeHeight: (json['relativeHeight'] as num).toDouble(),
-        zIndex: json['zIndex'] as int? ?? 0,
-        imagePath: json['imagePath'] as String?,
-        visible: json['visible'] as bool? ?? true,
-        locked: json['locked'] as bool? ?? false,
-      );
+    id: json['id'] as String,
+    label: json['label'] as String,
+    relativeX: (json['relativeX'] as num).toDouble(),
+    relativeY: (json['relativeY'] as num).toDouble(),
+    relativeWidth: (json['relativeWidth'] as num).toDouble(),
+    relativeHeight: (json['relativeHeight'] as num).toDouble(),
+    zIndex: json['zIndex'] as int? ?? 0,
+    imagePath: json['imagePath'] as String?,
+    visible: json['visible'] as bool? ?? true,
+    locked: json['locked'] as bool? ?? false,
+    fontScale: (json['fontScale'] as num?)?.toDouble() ?? 1.0,
+    fontFamily: json['fontFamily'] as String? ?? 'Inter',
+  );
 }

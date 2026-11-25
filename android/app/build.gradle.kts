@@ -36,8 +36,9 @@ android {
 
     defaultConfig {
         applicationId = "com.dashcore.app"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        // The bundled native GLB renderer (Google Filament) requires API 24.
+        minSdk = 24
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
@@ -62,6 +63,10 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
 
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
@@ -79,5 +84,8 @@ flutter {
 }
 
 dependencies {
-    implementation("com.google.android.play:core:1.10.3")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.32.0")
+    // Reemplazo modular y vigente del antiguo com.google.android.play:core.
+    // Flutter referencia SplitInstall al optimizar builds release con R8.
+    implementation("com.google.android.play:feature-delivery:2.1.0")
 }

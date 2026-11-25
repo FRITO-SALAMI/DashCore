@@ -9,6 +9,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.media.MediaMetadata
+import android.media.MediaPlayer
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
@@ -29,20 +30,25 @@ class MainActivity: FlutterActivity() {
     private val PERSISTENCE_CHANNEL = "io.dashcore.app/persistence"
     private var screenOnReceiver: BroadcastReceiver? = null
     private var screenOffReceiver: BroadcastReceiver? = null
+    private var accReceiver: BroadcastReceiver? = null
     private var musicBroadcastReceiver: BroadcastReceiver? = null
     
     private var mediaSessionManager: MediaSessionManager? = null
     private var activeControllers = mutableListOf<MediaController>()
     private var primaryController: MediaController? = null
+    private var alertPlayer: MediaPlayer? = null
     
     private val mediaCallback = object : MediaController.Callback() {
         override fun onMetadataChanged(metadata: MediaMetadata?) {
-            updateMediaMetadata(metadata)
+            updateMediaMetadata(metadata ?: primaryController?.metadata)
         }
+        override fun onSessionDestroyed() { refreshMediaSessions() }
         override fun onPlaybackStateChanged(state: PlaybackState?) {
-            updatePlaybackState(state)
+            refreshMediaSessions()
         }
     }
+
+    private var listeningToSessions = false
 
     private val sessionsChangedListener = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
         updateActiveSessions(controllers)
@@ -50,15 +56,34 @@ class MainActivity: FlutterActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Si la actividad está en primer plano, el usuario está interactuando.
+        // Forzamos el despertar si estaba en modo sueño para evitar quedar atrapados.
+        getSharedPreferences("dashcore_persistence", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("acc_sleeping", false)
+            .apply()
+            
+        flutterEngine?.dartExecutor?.binaryMessenger?.let {
+            MethodChannel(it, PERSISTENCE_CHANNEL).invokeMethod("onScreenWakeup", null)
+        }
+        
         refreshMediaSessions()
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        LocalVehicleArt.register(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         
         // Launcher & Media Channel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
+                "setWindowBrightness" -> {
+                    val value = call.argument<Double>("value") ?: -1.0
+                    val attributes = window.attributes
+                    attributes.screenBrightness = if (value < 0) -1f else value.coerceIn(0.05, 1.0).toFloat()
+                    window.attributes = attributes
+                    result.success(true)
+                }
                 "launchApp" -> {
                     val packageName = call.argument<String>("packageName")
                     if (packageName != null) {
@@ -95,6 +120,13 @@ class MainActivity: FlutterActivity() {
                     requestIgnoreBatteryOptimizations()
                     result.success(true)
                 }
+                "getRenderCapabilities" -> {
+                    val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                    result.success(mapOf(
+                        "lowRam" to manager.isLowRamDevice,
+                        "maxHeapMb" to (Runtime.getRuntime().maxMemory() / (1024L * 1024L))
+                    ))
+                }
                 "getPerformanceSnapshot" -> {
                     val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
                     val memory = manager.getProcessMemoryInfo(
@@ -119,12 +151,64 @@ class MainActivity: FlutterActivity() {
             }
         }
 
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "io.dashcore.app/alert_audio").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "play" -> {
+                    val path = call.argument<String>("path")
+                    val loop = call.argument<Boolean>("loop") ?: false
+                    if (path.isNullOrBlank()) {
+                        result.error("INVALID_PATH", "Alert sound path is empty", null)
+                    } else {
+                        try {
+                            alertPlayer?.release()
+                            alertPlayer = MediaPlayer().apply {
+                                setDataSource(path)
+                                isLooping = loop
+                                setAudioStreamType(AudioManager.STREAM_ALARM)
+                                prepare()
+                                start()
+                            }
+                            result.success(true)
+                        } catch (error: Exception) {
+                            alertPlayer?.release()
+                            alertPlayer = null
+                            result.error("PLAYBACK_ERROR", error.message, null)
+                        }
+                    }
+                }
+                "stop" -> {
+                    alertPlayer?.run { if (isPlaying) stop(); release() }
+                    alertPlayer = null
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
         // Persistence Channel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PERSISTENCE_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
-                "startService" -> {
-                    startPersistenceService()
+                "enterAccBackground" -> {
+                    result.success(moveTaskToBack(true))
+                }
+                "getAccSleeping" -> {
+                    result.success(getSharedPreferences("dashcore_persistence", Context.MODE_PRIVATE).getBoolean("acc_sleeping", false))
+                }
+                "setKeepAppActive" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    getSharedPreferences("dashcore_persistence", Context.MODE_PRIVATE)
+                        .edit()
+                        .putBoolean("keep_app_active", enabled)
+                        .apply()
                     result.success(true)
+                }
+                "startService" -> {
+                    try {
+                        startPersistenceService()
+                        result.success(true)
+                    } catch (error: Exception) {
+                        result.error("SERVICE_UNAVAILABLE", error.message, null)
+                    }
                 }
                 "stopService" -> {
                     stopPersistenceService()
@@ -162,11 +246,14 @@ class MainActivity: FlutterActivity() {
 
         setupScreenOnReceiver(flutterEngine)
         setupScreenOffReceiver(flutterEngine)
+        setupAccReceiver(flutterEngine)
         setupMediaSessionListener(flutterEngine)
         setupMusicBroadcastReceiver(flutterEngine)
     }
 
     private fun startPersistenceService() {
+        val prefs = getSharedPreferences("dashcore_persistence", Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("keep_app_active", false) || prefs.getBoolean("acc_sleeping", false)) return
         val serviceIntent = Intent(this, DashCoreService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(serviceIntent)
@@ -240,13 +327,12 @@ class MainActivity: FlutterActivity() {
         val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PERSISTENCE_CHANNEL)
         screenOnReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
+                getSharedPreferences("dashcore_persistence", Context.MODE_PRIVATE).edit().putBoolean("acc_sleeping", false).apply()
                 channel.invokeMethod("onScreenWakeup", null)
             }
         }
         val filter = IntentFilter().apply {
-            addAction("com.dashcore.app.SCREEN_ON")
             addAction(Intent.ACTION_SCREEN_ON)
-            addAction(Intent.ACTION_USER_PRESENT)
             addAction(Intent.ACTION_POWER_CONNECTED)
             addAction("android.intent.action.QUICKBOOT_POWERON")
         }
@@ -261,11 +347,12 @@ class MainActivity: FlutterActivity() {
         val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PERSISTENCE_CHANNEL)
         screenOffReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
+                getSharedPreferences("dashcore_persistence", Context.MODE_PRIVATE).edit().putBoolean("acc_sleeping", true).apply()
+                stopPersistenceService()
                 channel.invokeMethod("onScreenSleep", null)
             }
         }
         val filter = IntentFilter().apply {
-            addAction("com.dashcore.app.SCREEN_OFF")
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_POWER_DISCONNECTED)
             addAction("android.intent.action.QUICKBOOT_POWEROFF")
@@ -275,6 +362,24 @@ class MainActivity: FlutterActivity() {
         } else {
             registerReceiver(screenOffReceiver, filter)
         }
+    }
+
+    private fun setupAccReceiver(engine: FlutterEngine) {
+        // These actions are sent by MCU services on supported automotive ROMs.
+        val off = setOf("android.intent.action.ACC_OFF", "com.microntek.ACC_OFF")
+        val on = setOf("android.intent.action.ACC_ON", "com.microntek.ACC_ON")
+        accReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                val sleeping = when (intent.action) { in off -> true; in on -> false; else -> return }
+                getSharedPreferences("dashcore_persistence", Context.MODE_PRIVATE).edit().putBoolean("acc_sleeping", sleeping).apply()
+                if (sleeping) stopPersistenceService()
+                MethodChannel(engine.dartExecutor.binaryMessenger, PERSISTENCE_CHANNEL)
+                    .invokeMethod(if (sleeping) "onScreenSleep" else "onScreenWakeup", null)
+            }
+        }
+        val filter = IntentFilter().apply { (off + on).forEach { addAction(it) } }
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(accReceiver, filter, RECEIVER_EXPORTED)
+        else registerReceiver(accReceiver, filter)
     }
 
     private fun setupMusicBroadcastReceiver(flutterEngine: FlutterEngine) {
@@ -287,25 +392,19 @@ class MainActivity: FlutterActivity() {
                 val artist = intent.getStringExtra("artist") ?: intent.getStringExtra("me.aallam.fluttermusic.ARTIST")
                 val track = intent.getStringExtra("track") ?: intent.getStringExtra("title") ?: intent.getStringExtra("me.aallam.fluttermusic.TITLE")
                 val album = intent.getStringExtra("album") ?: ""
-                val isPlaying = intent.getBooleanExtra("playing", false)
-                    || intent.getBooleanExtra("isplaying", false)
-                    || action.contains("playstatechanged")
-                    || action.contains("START_STATE")
-
-                if (track != null || artist != null) {
-                    val data = mapOf(
-                        "title" to (track ?: "Desconocido"),
-                        "artist" to (artist ?: "Artista Desconocido"),
-                        "album" to album,
-                        "artwork" to null
-                    )
-                    channel.invokeMethod("onMetadataChanged", data)
-                    channel.invokeMethod("onPlaybackStateChanged", mapOf(
-                        "isPlaying" to isPlaying,
-                        "position" to intent.getLongExtra("position", 0L),
-                        "duration" to intent.getLongExtra("duration", 0L)
+                if (track != null) {
+                    channel.invokeMethod("onMetadataChanged", mapOf(
+                        "title" to track, "artist" to (artist ?: ""), "album" to album, "artwork" to null
                     ))
                 }
+                val playback = mutableMapOf<String, Any>()
+                if (intent.hasExtra("playing")) playback["isPlaying"] = intent.getBooleanExtra("playing", false)
+                else if (intent.hasExtra("isplaying")) playback["isPlaying"] = intent.getBooleanExtra("isplaying", false)
+                else if (action.endsWith("playbackcomplete")) playback["isPlaying"] = false
+                if (intent.hasExtra("position")) playback["position"] = (intent.extras?.get("position") as? Number)?.toLong() ?: 0L
+                if (intent.hasExtra("duration")) playback["duration"] = (intent.extras?.get("duration") as? Number)?.toLong() ?: 0L
+                if (playback.isNotEmpty()) channel.invokeMethod("onPlaybackStateChanged", playback)
+
             }
         }
         val filter = IntentFilter().apply {
@@ -340,6 +439,7 @@ class MainActivity: FlutterActivity() {
         try {
             val componentName = ComponentName(this, "com.gomes.nowplaying.NowPlayingListenerService")
             mediaSessionManager?.addOnActiveSessionsChangedListener(sessionsChangedListener, componentName)
+            listeningToSessions = true
             updateActiveSessions(mediaSessionManager?.getActiveSessions(componentName))
         } catch (e: SecurityException) {
             android.util.Log.e("MainActivity", "Notification Access not granted for MediaSession")
@@ -352,12 +452,17 @@ class MainActivity: FlutterActivity() {
         }
         try {
             val componentName = ComponentName(this, "com.gomes.nowplaying.NowPlayingListenerService")
+            if (!listeningToSessions) {
+                mediaSessionManager?.addOnActiveSessionsChangedListener(sessionsChangedListener, componentName)
+                listeningToSessions = true
+            }
             val sessions = mediaSessionManager?.getActiveSessions(componentName)
             updateActiveSessions(sessions)
         } catch (_: Exception) {}
     }
 
     private fun updateActiveSessions(controllers: List<MediaController>?) {
+        val hadSession = primaryController != null
         // Unregister from old controllers
         for (controller in activeControllers) {
             try {
@@ -377,23 +482,26 @@ class MainActivity: FlutterActivity() {
 
             primaryController?.let { controller ->
                 try {
-                    controller.registerCallback(mediaCallback)
+                    for (active in activeControllers) active.registerCallback(mediaCallback)
                     updateMediaMetadata(controller.metadata)
                     updatePlaybackState(controller.playbackState)
                 } catch (_: Exception) {}
             }
         }
+        if (hadSession && primaryController == null) updateMediaMetadata(null)
     }
 
     private fun updateMediaMetadata(metadata: MediaMetadata?) {
-        if (metadata == null) return
+
         
-        val title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE) ?: "Desconocido"
+        val title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE)
+            ?: metadata?.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)
+            ?: ""
 
         val data = mapOf(
             "title" to title,
-            "artist" to "",
-            "album" to "",
+            "artist" to metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST),
+            "album" to metadata?.getString(MediaMetadata.METADATA_KEY_ALBUM),
             "artwork" to null
         )
         
@@ -406,12 +514,14 @@ class MainActivity: FlutterActivity() {
         if (state == null) return
         
         val isPlaying = state.state == PlaybackState.STATE_PLAYING
-        val position = state.position
+        val elapsed = (android.os.SystemClock.elapsedRealtime() - state.lastPositionUpdateTime).coerceAtLeast(0)
+        val position = state.position + if (isPlaying && state.lastPositionUpdateTime > 0) (elapsed * state.playbackSpeed).toLong() else 0L
         val duration = primaryController?.metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
 
         val data = mapOf(
             "isPlaying" to isPlaying,
             "position" to position,
+            "speed" to state.playbackSpeed,
             "duration" to duration
         )
         
@@ -440,9 +550,13 @@ class MainActivity: FlutterActivity() {
     }
 
     override fun onDestroy() {
+        alertPlayer?.release()
+        alertPlayer = null
         super.onDestroy()
         screenOnReceiver?.let { unregisterReceiver(it) }
         screenOffReceiver?.let { unregisterReceiver(it) }
+        accReceiver?.let { unregisterReceiver(it) }
+        activeControllers.forEach { it.unregisterCallback(mediaCallback) }
         musicBroadcastReceiver?.let { unregisterReceiver(it) }
         mediaSessionManager?.removeOnActiveSessionsChangedListener(sessionsChangedListener)
     }
@@ -450,19 +564,22 @@ class MainActivity: FlutterActivity() {
     private fun sendMediaCommand(command: String?) {
         primaryController?.let { controller ->
             val controls = controller.transportControls
+            val actions = controller.playbackState?.actions ?: 0L
+            var handled = true
             when (command) {
                 "playPause" -> {
                     val state = controller.playbackState
                     if (state != null && state.state == PlaybackState.STATE_PLAYING) {
-                        controls.pause()
+                        if (actions and PlaybackState.ACTION_PAUSE != 0L) controls.pause() else handled = false
                     } else {
-                        controls.play()
+                        if (actions and PlaybackState.ACTION_PLAY != 0L) controls.play() else handled = false
                     }
                 }
-                "next" -> controls.skipToNext()
-                "previous" -> controls.skipToPrevious()
+                "next" -> if (actions and PlaybackState.ACTION_SKIP_TO_NEXT != 0L) controls.skipToNext() else handled = false
+                "previous" -> if (actions and PlaybackState.ACTION_SKIP_TO_PREVIOUS != 0L) controls.skipToPrevious() else handled = false
+                else -> handled = false
             }
-            return
+            if (handled) return
         }
 
         // Always also dispatch via AudioManager & Intent as fallback for automotive radios/headunits
@@ -480,16 +597,7 @@ class MainActivity: FlutterActivity() {
         am.dispatchMediaKeyEvent(downEvent)
         am.dispatchMediaKeyEvent(upEvent)
 
-        try {
-            val mediaDown = Intent(Intent.ACTION_MEDIA_BUTTON).apply {
-                putExtra(Intent.EXTRA_KEY_EVENT, downEvent)
-            }
-            sendOrderedBroadcast(mediaDown, null)
-            val mediaUp = Intent(Intent.ACTION_MEDIA_BUTTON).apply {
-                putExtra(Intent.EXTRA_KEY_EVENT, upEvent)
-            }
-            sendOrderedBroadcast(mediaUp, null)
-        } catch (_: Exception) {}
+
     }
 
     private fun getInstalledApps(): List<Map<String, String>> {

@@ -286,48 +286,10 @@ class _TutorialOverlayState extends State<TutorialOverlay>
           ] else ...[
             Positioned.fill(
               child: IgnorePointer(
-                child: Container(color: Colors.black.withOpacity(0.72)),
+                child: Container(color: Colors.black.withOpacity(0.52)),
               ),
             ),
           ],
-
-          // Next button always available to ensure the user never gets stuck
-          if (canRecoverFromMissingTarget)
-            Positioned(
-              top: 20,
-              right: 20,
-              child: SafeArea(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: step == 13 ? _completeTutorial : _next,
-                      icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                      label: Text(
-                        nextLabel,
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00E5FF),
-                        foregroundColor: Colors.black,
-                        elevation: 10,
-                        shadowColor: const Color(0xFF00E5FF).withOpacity(0.5),
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                      ),
-                    ),
-                    if (step == 1)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 8, right: 10),
-                        child: Text(
-                          "O usa el botón si el gesto falla",
-                          style: TextStyle(color: Colors.white38, fontSize: 9, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
 
           Positioned(
             left: 0,
@@ -532,7 +494,7 @@ class _SpotlightPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final overlay = Paint()..color = Colors.black.withOpacity(0.84);
+    final overlay = Paint()..color = Colors.black.withOpacity(0.58);
     final holePath = Path()
       ..addRRect(RRect.fromRectAndRadius(hole, const Radius.circular(16)));
     final screenPath = Path()..addRect(Offset.zero & size);
