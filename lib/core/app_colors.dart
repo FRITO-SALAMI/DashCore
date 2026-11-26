@@ -6,7 +6,7 @@ class AppColors {
   // ============================================================
 
   /// Fondo principal de toda la aplicación.
-  static const Color background = Color(0xFF0B1018);
+  static const Color background = Color(0xFF0A1019);
 
   /// Superficie normal: tarjetas, paneles, navegación.
   static const Color cardBg = Color(0xFF141E2B);
@@ -22,7 +22,7 @@ class AppColors {
   // ============================================================
 
   /// Color principal de DashCore (Neon Blue).
-  static const Color accent = Color(0xFF77DFEA);
+  static const Color accent = Color(0xFF94E4ED);
 
   /// Acento secundario.
   static const Color secondaryAccent = Color(0xFFC7C1FF);
@@ -33,7 +33,7 @@ class AppColors {
 
   static const Color textMainColor = Color(0xFFF4F7FA);
 
-  static const Color textSecondaryColor = Color(0xFF8D98A8);
+  static const Color textSecondaryColor = Color(0xFFA4B2C2);
 
   static const Color textMutedColor = Color(0xFF5F6A79);
 

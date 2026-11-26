@@ -405,7 +405,8 @@ class DashSettingsProvider extends ChangeNotifier {
   /// Maximum visual telemetry refresh rate. Expensive dashboards remain
   /// available on low-resource devices, but receive fewer UI updates.
   int get telemetryFramesPerSecond {
-    if (reduceMotion) return 5;
+    if (reduceOrbitMotion) return 8;
+    if (_isLowResourceDevice && _performanceMode == PerformanceMode.auto) return 12;
     switch (_performanceMode) {
       case PerformanceMode.auto:
         return _isLowResourceDevice ? 15 : 20;
@@ -664,6 +665,7 @@ class DashSettingsProvider extends ChangeNotifier {
         for (final vehicle in vehicles) {
           if (vehicle.id == selectedId) {
             _selectedVehicle = vehicle;
+            unawaited(prefs.setString('ignition_vehicle_brand', vehicle.brand));
             unawaited(_resolveVehicleLogo(vehicle, downloadIfMissing: false));
             if (vehicle.isDownloaded) {
               _modelPath = vehicle.modelPath;
@@ -1209,8 +1211,10 @@ class DashSettingsProvider extends ChangeNotifier {
 
     if (_selectedVehicle != null) {
       await prefs.setString('selected_vehicle_id', _selectedVehicle!.id);
+      await prefs.setString('ignition_vehicle_brand', _selectedVehicle!.brand);
     } else {
       await prefs.remove('selected_vehicle_id');
+      await prefs.remove('ignition_vehicle_brand');
     }
 
     final gList = _customGauges.map((g) {

@@ -53,12 +53,34 @@ class _HomeScreenState extends State<HomeScreen> {
   ObdProvider? _obdProvider;
   ObdData _renderedData = const ObdData();
   Timer? _telemetryFrameTimer;
+  (bool, bool, bool, ObdConnectionState)? _renderedMode;
+  bool _dashboardIsVisible = true;
+  bool _foreground = true;
+  late final AppLifecycleListener _lifecycle;
+
+  bool get _rendersDashboard => _dashboardIsVisible && _foreground;
+
+  (bool, bool, bool, ObdConnectionState) _modeOf(ObdProvider obd) =>
+      (obd.isRealMode, obd.isGpsMode, obd.isDemoMode, obd.state);
   bool _isShowingDownloadDialog = false;
   String? _dismissedResourceVehicle;
 
   @override
   void initState() {
     super.initState();
+    final state = WidgetsBinding.instance.lifecycleState;
+    _foreground = state == null || state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
+    _lifecycle = AppLifecycleListener(onStateChange: (state) {
+      final visible = state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
+      if (visible == _foreground) return;
+      setState(() => _foreground = visible);
+      if (visible) {
+        _onTelemetryChanged();
+      } else {
+        _telemetryFrameTimer?.cancel();
+        _telemetryFrameTimer = null;
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final dashSettings = context.read<DashSettingsProvider>();
@@ -73,17 +95,23 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _dashboardIsVisible = ModalRoute.isCurrentOf(context) ?? true;
     final provider = context.read<ObdProvider>();
     if (!identical(provider, _obdProvider)) {
       _obdProvider?.removeListener(_onTelemetryChanged);
       _obdProvider = provider;
       _renderedData = provider.data;
+      _renderedMode = _modeOf(provider);
       provider.addListener(_onTelemetryChanged);
+    } else if (_dashboardIsVisible) {
+      _onTelemetryChanged();
     }
   }
 
   void _onTelemetryChanged() {
-    if (!mounted || _telemetryFrameTimer != null) return;
+    if (!mounted || !_rendersDashboard || _telemetryFrameTimer != null) return;
+    final provider = _obdProvider;
+    if (provider == null || !_hasNewTelemetry(provider)) return;
     final settings = context.read<DashSettingsProvider>();
     if (!settings.isAppActive) return;
     final frameDelay = Duration(
@@ -91,10 +119,23 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     _telemetryFrameTimer = Timer(frameDelay, () {
       _telemetryFrameTimer = null;
-      if (!mounted || !context.read<DashSettingsProvider>().isAppActive) return;
-      final latest = _obdProvider?.data;
-      if (latest != null) setState(() => _renderedData = latest);
+      if (!mounted || !_rendersDashboard || !context.read<DashSettingsProvider>().isAppActive) return;
+      final latest = _obdProvider;
+      if (latest == null || !_hasNewTelemetry(latest)) return;
+      setState(() {
+        _renderedMode = _modeOf(latest);
+        _renderedData = latest.data;
+      });
     });
+  }
+
+  bool _hasNewTelemetry(ObdProvider provider) {
+    final current = provider.data;
+    final old = _renderedData;
+    return _modeOf(provider) != _renderedMode || current.rpm != old.rpm ||
+        current.speed != old.speed || current.engineTemp != old.engineTemp ||
+        current.voltage != old.voltage || current.fuelLevel != old.fuelLevel ||
+        current.odometer != old.odometer || current.gear != old.gear;
   }
 
   void _checkResources(DashSettingsProvider settings) {
@@ -212,6 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _lifecycle.dispose();
     _telemetryFrameTimer?.cancel();
     _obdProvider?.removeListener(_onTelemetryChanged);
     if (_settingsListener != null)
@@ -236,7 +278,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Positioned.fill(
               child: TickerMode(
-                enabled: settings.isAppActive &&
+                enabled: settings.isAppActive && _rendersDashboard &&
                     !(settings.selectedStyle == DashboardStyle.orbitWorld
                         ? settings.reduceOrbitMotion
                         : settings.reduceMotion),
@@ -258,7 +300,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: _DashboardLightOverlay(
                     color: settings.lightColor,
                     design: settings.lightDesign,
-                    rpm: _renderedData.rpm,
+                    rpm: settings.lightDesign == 3 ? _renderedData.rpm : 0,
+                    animate: settings.isAppActive && _rendersDashboard && !settings.reduceMotion &&
+                        MediaQuery.maybeDisableAnimationsOf(context) != true,
                   ),
                 ),
               ),
@@ -1139,10 +1183,12 @@ class _DashboardLightOverlay extends StatefulWidget {
   final Color color;
   final int design;
   final int rpm;
+  final bool animate;
   const _DashboardLightOverlay({
     required this.color,
     required this.design,
     required this.rpm,
+    required this.animate,
   });
   @override
   State<_DashboardLightOverlay> createState() => _DashboardLightOverlayState();
@@ -1157,7 +1203,22 @@ class _DashboardLightOverlayState extends State<_DashboardLightOverlay>
     _c = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
+    );
+    _updateMotion();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DashboardLightOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _updateMotion();
+  }
+
+  void _updateMotion() {
+    if (!widget.animate || widget.design != 2) {
+      _c.stop();
+    } else if (!_c.isAnimating) {
+      _c.repeat(reverse: true);
+    }
   }
 
   @override

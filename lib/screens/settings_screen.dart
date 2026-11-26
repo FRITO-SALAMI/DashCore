@@ -22,6 +22,7 @@ import '../providers/obd_provider.dart';
 import '../providers/music_provider.dart';
 import '../utils/app_localizations.dart';
 import '../widget/tutorial/tutorial_keys.dart';
+import '../widget/animated_startup_splash.dart';
 import 'auth_screen.dart';
 import 'privacy_policy_screen.dart';
 
@@ -794,6 +795,7 @@ Arquitectura: $architectureStr
                     'Allow DashCore to see the currently playing track'),
                   onTap: () => context.read<MusicProvider>().requestPermissions(),
                 ),
+                const _IgnitionSettingsTile(),
                 _SectionHeader(
                   title: isSpanish ? 'RENDIMIENTO' : 'PERFORMANCE',
                 ),
@@ -1899,4 +1901,76 @@ class _SettingsSlider extends StatelessWidget {
       ],
     ),
   );
+}
+
+class _IgnitionSettingsTile extends StatelessWidget {
+  const _IgnitionSettingsTile();
+
+  Future<void> _open(BuildContext context, String? brand) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!context.mounted) return;
+    var selection = prefs.getString('ignition_profile') ?? 'auto';
+    await showDialog<void>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, update) => AlertDialog(
+          title: const Text('Animación de encendido'),
+          content: SizedBox(
+            width: 430,
+            child: DropdownButton<String>(
+              value: selection,
+              isExpanded: true,
+              items: [
+                const DropdownMenuItem(value: 'auto', child: Text('Marca del vehículo')),
+                for (final profile in IgnitionProfile.values)
+                  DropdownMenuItem(value: profile.name, child: Text(profile.label)),
+                const DropdownMenuItem(value: 'off', child: Text('Desactivada')),
+              ],
+              onChanged: (value) {
+                if (value != null) update(() => selection = value);
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: selection == 'off' ? null : () => showDialog<void>(
+                context: context,
+                builder: (_) => Dialog(
+                  clipBehavior: Clip.hardEdge,
+                  child: SizedBox(
+                    width: 520, height: 220,
+                    child: AnimatedStartupSplash(
+                      profile: IgnitionProfile.forBrand(selection == 'auto' ? brand : selection),
+                      child: const Center(child: Text('Vista previa de encendido')),
+                    ),
+                  ),
+                ),
+              ),
+              child: const Text('Vista previa'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                await prefs.setString('ignition_profile', selection);
+                if (context.mounted) Navigator.pop(context);
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final brand = context.select((DashSettingsProvider settings) => settings.selectedVehicle?.brand);
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.power_settings_new, color: AppColors.accent),
+      title: const Text('Animación de encendido'),
+      subtitle: const Text('Marca, vista previa y opción de desactivar'),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => _open(context, brand),
+    );
+  }
 }
