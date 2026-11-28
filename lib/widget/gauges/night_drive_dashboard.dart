@@ -9,7 +9,7 @@ import '../../providers/dash_settings_provider.dart';
 import '../display_units.dart';
 import '../music_hub.dart';
 import '../tutorial/tutorial_keys.dart';
-import '../vehicle_top_view.dart';
+import '../dashboard_vehicle.dart';
 
 class NightDriveDashboard extends StatelessWidget {
   const NightDriveDashboard({
@@ -137,7 +137,8 @@ class NightDriveDashboard extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              child: VehicleTopView(
+                              child: DashboardVehicle(
+                                preview: preview,
                                 colorHex: preview
                                     ? '#D5DDE9'
                                     : settings.vehicleColorHex,

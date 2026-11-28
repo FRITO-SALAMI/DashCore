@@ -12,7 +12,7 @@ import '../../models/obd_data.dart';
 import '../../providers/dash_settings_provider.dart';
 import '../../providers/obd_provider.dart';
 import '../../services/usb_gnss_reader.dart';
-import '../vehicle_top_view.dart';
+import '../dashboard_vehicle.dart';
 import '../display_units.dart';
 import '../vehicle_stage.dart';
 import 'local_position_view.dart';
@@ -75,7 +75,8 @@ class RoadAtlasDashboard extends StatelessWidget {
                         ],
                       ),
                       Expanded(
-                        child: VehicleTopView(
+                        child: DashboardVehicle(
+                          preview: preview,
                           colorHex: settings.vehicleColorHex,
                           vehicle: vehicle,
                         ),

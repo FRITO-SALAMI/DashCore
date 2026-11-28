@@ -264,6 +264,7 @@ class _CompatibleVehicleModelState extends State<CompatibleVehicleModel> {
     final settings = context.select(
       (DashSettingsProvider settings) => (
         vehicle: settings.selectedVehicle,
+        use3d: settings.useVehicle3d,
         artwork: settings.selectedVehicle?.artworkPath,
         rearArtwork: settings.selectedVehicle?.rearArtworkPath,
         catalogUrl: settings.selectedVehicle?.modelUrl,
@@ -275,7 +276,7 @@ class _CompatibleVehicleModelState extends State<CompatibleVehicleModel> {
       ),
     );
     final rearArtwork = widget.rearView ? settings.rearArtwork : null;
-    if (widget.preferLightPreview) {
+    if (widget.preferLightPreview && !settings.use3d) {
       return VehicleTopView(
         colorHex: settings.color,
         vehicle: settings.vehicle,

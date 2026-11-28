@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../dashboard_brand_mark.dart';
 import '../dashboard_background.dart';
 import '../tutorial/tutorial_keys.dart';
-import '../vehicle_stage.dart';
+import '../dashboard_vehicle.dart';
 
 enum ClusterDesign {
   sport,
@@ -128,10 +128,7 @@ class InstrumentClusterV2 extends StatelessWidget {
                                       Expanded(
                                         flex: 2,
                                         child: RepaintBoundary(
-                                          child: VehiclePhoto(
-                                            artwork: rearArtwork,
-                                            reduceMotion: true,
-                                          ),
+                                          child: const DashboardVehicle(),
                                         ),
                                       ),
                                     ],

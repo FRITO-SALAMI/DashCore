@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 
 import '../../models/obd_data.dart';
 import '../../providers/dash_settings_provider.dart';
-import '../compatible_vehicle_model.dart';
 import '../dashboard_background.dart';
 import '../tutorial/tutorial_keys.dart';
-import '../vehicle_stage.dart';
+import '../dashboard_vehicle.dart';
+import '../dashboard_brand_mark.dart';
 
 class VelocityDashboard extends StatelessWidget {
   const VelocityDashboard({
@@ -63,14 +63,11 @@ class VelocityDashboard extends StatelessWidget {
         !settings.reduceMotion &&
         MediaQuery.maybeOf(context)?.disableAnimations != true;
     final vehicle = settings.selectedVehicle;
-    final thumbnail = catalogVehiclePreview(vehicle?.modelUrl ?? '');
-    final vehicleImage = thumbnail != null && !preview
-        ? Image.asset(thumbnail, fit: BoxFit.contain, cacheWidth: 520)
-        : VehiclePhoto(
-            artwork: preview ? null : vehicle?.artworkPath,
-            demo: preview || vehicle == null,
-            reduceMotion: !motion,
-          );
+    final vehicleImage = DashboardVehicle(
+      vehicle: vehicle,
+      colorHex: settings.vehicleColorHex,
+      preview: preview,
+    );
 
     final artwork = RepaintBoundary(
       child: DecoratedBox(
@@ -140,15 +137,7 @@ class VelocityDashboard extends StatelessWidget {
                           children: [
                             Container(width: 3, height: 26, color: accent),
                             const SizedBox(width: 13),
-                            Text(
-                              _carbon ? 'CARBON PULSE' : 'APEX GT',
-                              style: const TextStyle(
-                                fontSize: 24,
-                                color: Color(0xFFECF5FC),
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 2,
-                              ),
-                            ),
+                            const DashboardBrandMark(width: 44),
                             const Spacer(),
                             Flexible(
                               child: Text(
@@ -413,21 +402,6 @@ class _Scale extends CustomPainter {
           ..color = const Color(0xFF192B36)
           ..strokeWidth = 1,
       );
-      canvas.save();
-      canvas.clipPath(
-        Path()..addOval(Rect.fromCircle(center: center, radius: radius - 36)),
-      );
-      paint
-        ..color = const Color(0xFF121F2A)
-        ..strokeWidth = 1.5;
-      for (double x = -2 * radius; x <= 2 * radius; x += 7) {
-        canvas.drawLine(
-          center + Offset(x, radius),
-          center + Offset(x + radius, -radius),
-          paint,
-        );
-      }
-      canvas.restore();
     }
     canvas.drawArc(
       rect,

@@ -1,7 +1,7 @@
 name: dashcore
 description: "DashCore - Open-source OBD2 dashboard app for real-time car data and diagnostics."
 homepage: https://github.com/iUnreallx/DashCore
-version: 1.0.1+5
+version: 1.0.1+6
 
 environment:
   sdk: ^3.10.4
@@ -54,9 +54,13 @@ flutter:
     - assets/web/three/
     - assets/maps/santo_domingo.json.gz
     - assets/maps/NOTICE.txt
+    - assets/vehicles/top/
     - assets/videos/road_loop.mp4
     - assets/videos/road_poster.jpg
     - assets/world_map.svg
+
+  shaders:
+    - shaders/vehicle_paint.frag
 
   fonts:
     - family: Inter

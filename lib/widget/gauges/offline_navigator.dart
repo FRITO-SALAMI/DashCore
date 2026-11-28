@@ -26,6 +26,9 @@ class _OfflineNavigatorState extends State<OfflineNavigator> {
   List<dynamic>? _target;
   List<int> _route = [];
   bool _routing = false;
+  bool _headingUp = false;
+  double _bearing = 0;
+  double _manualBearing = 0, _rotationStart = 0;
   int _generation = 0;
   int _progress = 0;
   DateTime _lastRoute = DateTime(2000);
@@ -33,6 +36,9 @@ class _OfflineNavigatorState extends State<OfflineNavigator> {
   @override
   void initState() {
     super.initState();
+    final p = widget.position;
+    if (p != null && p.heading.isFinite && p.heading >= 0)
+      _bearing = p.heading * math.pi / 180;
     OfflineMapData.load()
         .then((data) {
           if (mounted) setState(() => _map = data);
@@ -47,6 +53,8 @@ class _OfflineNavigatorState extends State<OfflineNavigator> {
   void didUpdateWidget(covariant OfflineNavigator oldWidget) {
     super.didUpdateWidget(oldWidget);
     final p = widget.position;
+    if (p != null && p.heading.isFinite && p.heading >= 0 && p.speed > .5)
+      _bearing = p.heading * math.pi / 180;
     if (p != null && p != oldWidget.position && _route.isNotEmpty) {
       var distance = double.infinity;
       var next = _progress;
@@ -241,9 +249,27 @@ class _OfflineNavigatorState extends State<OfflineNavigator> {
       children: [
         const ColoredBox(color: Color(0xFF09151F)),
         if (map != null)
-          RepaintBoundary(
-            child: CustomPaint(
-              painter: _OfflineStreets(map, p, _route, _progress),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onScaleStart: (_) =>
+                _rotationStart = _headingUp ? _bearing : _manualBearing,
+            onScaleUpdate: (details) {
+              if (details.pointerCount < 2) return;
+              setState(() {
+                _headingUp = false;
+                _manualBearing = _rotationStart - details.rotation;
+              });
+            },
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: _OfflineStreets(
+                  map,
+                  p,
+                  _route,
+                  _progress,
+                  _headingUp ? _bearing : _manualBearing,
+                ),
+              ),
             ),
           ),
         Positioned(
@@ -260,6 +286,29 @@ class _OfflineNavigatorState extends State<OfflineNavigator> {
                 ),
               ),
               const SizedBox(width: 6),
+              IconButton.filledTonal(
+                tooltip: (_headingUp || _manualBearing != 0)
+                    ? 'Fijar norte arriba'
+                    : 'Orientar mapa según el rumbo GPS',
+                onPressed: () => setState(() {
+                  if (_manualBearing != 0) {
+                    _manualBearing = 0;
+                    _headingUp = false;
+                  } else {
+                    _headingUp = !_headingUp;
+                  }
+                }),
+                icon: Transform.rotate(
+                  angle: -(_headingUp ? _bearing : _manualBearing),
+                  child: Text(
+                    'N',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: _headingUp ? Colors.cyanAccent : null,
+                    ),
+                  ),
+                ),
+              ),
               IconButton.filledTonal(
                 tooltip: 'GPS del equipo',
                 onPressed: widget.onGps,
@@ -335,7 +384,14 @@ class _OfflineNavigatorState extends State<OfflineNavigator> {
 }
 
 class _OfflineStreets extends CustomPainter {
-  _OfflineStreets(this.map, this.position, this.route, this.progress);
+  _OfflineStreets(
+    this.map,
+    this.position,
+    this.route,
+    this.progress,
+    this.bearing,
+  );
+  final double bearing;
   final OfflineMapData map;
   final Position? position;
   final List<int> route;
@@ -345,22 +401,28 @@ class _OfflineStreets extends CustomPainter {
     final lat = position?.latitude ?? 18.4861,
         lon = position?.longitude ?? -69.9312;
     final scale = size.shortestSide / 1700;
-    Offset project(dynamic p) => Offset(
-      size.width / 2 + (p[1] - lon) * 105600 * scale,
-      size.height / 2 - (p[0] - lat) * 111320 * scale,
-    );
+    final cosine = math.cos(bearing), sine = math.sin(bearing);
+    Offset project(dynamic p) {
+      final x = (p[1] - lon) * 105600 * scale,
+          y = -(p[0] - lat) * 111320 * scale;
+      return size.center(Offset.zero) +
+          Offset(x * cosine + y * sine, -x * sine + y * cosine);
+    }
+
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
     final visible = (Offset.zero & size).inflate(35);
     final labels = <String>{};
+    final pendingLabels = <(String, Offset)>[];
+    final extent = size.longestSide * .75 + 40;
+    final halfLat = extent / scale / 111320, halfLon = extent / scale / 105600;
     var count = 0;
     for (var roadIndex = 0; roadIndex < map.roads.length; roadIndex++) {
       final road = map.roads[roadIndex];
       final bounds = map.raw['roadBounds'][roadIndex];
-      final halfLat = (size.height / 2 + 40) / scale / 111320,
-          halfLon = (size.width / 2 + 40) / scale / 105600;
+
       if (bounds[2] < lat - halfLat ||
           bounds[0] > lat + halfLat ||
           bounds[3] < lon - halfLon ||
@@ -377,7 +439,7 @@ class _OfflineStreets extends CustomPainter {
           path.lineTo(point.dx, point.dy);
         if (visible.contains(point)) seen = true;
       }
-      if (!seen) continue;
+      if (!seen && !path.getBounds().overlaps(visible)) continue;
       final major = [
         'motorway',
         'trunk',
@@ -394,20 +456,7 @@ class _OfflineStreets extends CustomPainter {
       if (major && count < 16 && labels.add(road[1])) {
         final point = project(map.nodes[ids[ids.length ~/ 2]]);
         if (visible.deflate(55).contains(point)) {
-          final text = TextPainter(
-            text: TextSpan(
-              text: road[1],
-              style: const TextStyle(
-                color: Color(0xFFABC2D1),
-                fontSize: 10,
-                fontFamily: 'Inter',
-                backgroundColor: Color(0xCC09151F),
-              ),
-            ),
-            textDirection: TextDirection.ltr,
-          )..layout(maxWidth: 140);
-          text.paint(canvas, point);
-          text.dispose();
+          pendingLabels.add((road[1] as String, point));
           count++;
         }
       }
@@ -439,6 +488,32 @@ class _OfflineStreets extends CustomPainter {
         Paint()..color = Colors.orangeAccent,
       );
     }
+    final occupied = <Rect>[];
+    for (final (name, point) in pendingLabels) {
+      final text = TextPainter(
+        text: TextSpan(
+          text: name,
+          style: const TextStyle(
+            color: Color(0xFFB6CCD9),
+            fontSize: 10,
+            fontFamily: 'Inter',
+            backgroundColor: Color(0xDD09151F),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: 140);
+      final rect = Rect.fromLTWH(
+        point.dx,
+        point.dy,
+        text.width,
+        text.height,
+      ).inflate(5);
+      if (!occupied.any((other) => other.overlaps(rect))) {
+        text.paint(canvas, point);
+        occupied.add(rect);
+      }
+      text.dispose();
+    }
     if (position != null) {
       final center = size.center(Offset.zero);
       canvas.save();
@@ -446,7 +521,7 @@ class _OfflineStreets extends CustomPainter {
       if (position!.heading.isFinite &&
           position!.heading >= 0 &&
           position!.speed > 1)
-        canvas.rotate(position!.heading * math.pi / 180);
+        canvas.rotate(position!.heading * math.pi / 180 - bearing);
       canvas.drawCircle(
         Offset.zero,
         21,
@@ -470,5 +545,6 @@ class _OfflineStreets extends CustomPainter {
       old.position != position ||
       old.route != route ||
       old.progress != progress ||
-      old.map != map;
+      old.map != map ||
+      old.bearing != bearing;
 }

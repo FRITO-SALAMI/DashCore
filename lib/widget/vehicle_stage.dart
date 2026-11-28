@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/vehicle_model.dart';
 import '../providers/dash_settings_provider.dart';
-import 'vehicle_top_view.dart';
+import 'dashboard_vehicle.dart';
 
 /// Shows the vehicle silhouette with an optional registered photo.
 class VehicleStage extends StatefulWidget {
@@ -72,7 +72,7 @@ class _VehicleStageState extends State<VehicleStage> {
         Padding(
           padding: const EdgeInsets.only(top: 24, bottom: 30),
           child: !_photo || artwork == null
-              ? VehicleTopView(
+              ? DashboardVehicle(
                   colorHex: context.select(
                     (DashSettingsProvider? settings) =>
                         settings?.vehicleColorHex ??

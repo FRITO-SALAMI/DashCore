@@ -5,6 +5,8 @@ import '../providers/dash_settings_provider.dart';
 import '../widget/vehicle_top_view.dart';
 import '../widget/workshop_diagnostics_panel.dart';
 import 'manual_vehicle_screen.dart';
+import '../utils/vehicle_presentation.dart';
+import 'package:file_picker/file_picker.dart';
 
 class CarScreen extends StatelessWidget {
   const CarScreen({super.key, required this.onBack});
@@ -65,7 +67,7 @@ class CarScreen extends StatelessWidget {
     Vehicle(
       id: 'local-h1',
       name: 'H1',
-      brand: 'Nissan',
+      brand: 'Hyundai',
       backgroundImage: '',
       modelPath: '',
     ),
@@ -100,12 +102,11 @@ class CarScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<DashSettingsProvider>();
-    final vehicles = [
-      ..._models,
-      ...settings.availableVehicles.where(
-        (v) => !_models.any((m) => m.id == v.id),
-      ),
-    ];
+    final vehicles = uniqueVehicleChoices(
+      _models,
+      settings.availableVehicles,
+      settings.selectedVehicle,
+    );
     final current = settings.selectedVehicle;
     String hour(int minutes) =>
         TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60).format(context);
@@ -113,6 +114,7 @@ class CarScreen extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       children: [
         DropdownButtonFormField<String>(
+          isExpanded: true,
           initialValue: current?.id ?? _models.first.id,
           decoration: const InputDecoration(labelText: 'Tu vehículo'),
           items: [
@@ -121,7 +123,10 @@ class CarScreen extends StatelessWidget {
             ...vehicles.map(
               (v) => DropdownMenuItem(
                 value: v.id,
-                child: Text('${v.brand} ${v.name} ${v.year ?? ''}'),
+                child: Text(
+                  vehicleDisplayName(v),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
           ],
@@ -129,6 +134,38 @@ class CarScreen extends StatelessWidget {
               settings.selectVehicle(vehicles.firstWhere((v) => v.id == id)),
         ),
         const SizedBox(height: 22),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Usar mi GLB en los tableros'),
+          subtitle: const Text(
+            'Vista cenital por defecto. El modelo 3D se activa al elegirlo.',
+          ),
+          value: settings.useVehicle3d,
+          onChanged: (value) async {
+            if (!value) {
+              await settings.setUseVehicle3d(false);
+              return;
+            }
+            if (settings.modelPath.isNotEmpty) {
+              await settings.setUseVehicle3d(true);
+              return;
+            }
+            try {
+              final file = await FilePicker.platform.pickFiles(
+                type: FileType.custom,
+                allowedExtensions: ['glb'],
+                withData: false,
+              );
+              final path = file?.files.single.path;
+              if (path != null) await settings.importOptionalVehicleGlb(path);
+            } catch (error) {
+              if (context.mounted)
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('No se pudo cargar el GLB. $error')),
+                );
+            }
+          },
+        ),
         const Text('COLOR DE CARROCERÍA'),
         const SizedBox(height: 12),
         Wrap(

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:dashcore/services/offline_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:dashcore/widget/gauges/offline_navigator.dart';
@@ -63,6 +64,57 @@ void main() {
       'Ruta local calculada en ${watch.elapsedMilliseconds} ms, ${route.length} puntos',
     );
   });
+
+  testWidgets(
+    'N rotates a loaded map immediately and restores north without another GPS fix',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: OfflineNavigator(
+              position: Position(
+                longitude: -69.9312,
+                latitude: 18.4861,
+                timestamp: DateTime.now(),
+                accuracy: 5,
+                altitude: 0,
+                altitudeAccuracy: 1,
+                heading: 90,
+                headingAccuracy: 1,
+                speed: 10,
+                speedAccuracy: 1,
+              ),
+              enabled: true,
+              onGps: () {},
+              onUsb: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(seconds: 2)),
+      );
+      await tester.pump();
+      final streets = find.byWidgetPredicate(
+        (w) =>
+            w is CustomPaint &&
+            w.painter.runtimeType.toString() == '_OfflineStreets',
+      );
+      final before = tester.widget<CustomPaint>(streets).painter!;
+      await tester.tap(find.byTooltip('Orientar mapa según el rumbo GPS'));
+      await tester.pump();
+      final rotated = tester.widget<CustomPaint>(streets).painter!;
+      expect(rotated.shouldRepaint(before), isTrue);
+      expect(find.byTooltip('Fijar norte arriba'), findsOneWidget);
+      await tester.tap(find.byTooltip('Fijar norte arriba'));
+      await tester.pump();
+      final restored = tester.widget<CustomPaint>(streets).painter!;
+      expect(restored.shouldRepaint(rotated), isTrue);
+      expect(restored.shouldRepaint(before), isFalse);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
   testWidgets('The local destination search opens inside a small dashboard', (
     tester,
   ) async {

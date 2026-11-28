@@ -38,6 +38,8 @@ class PreviewSettings implements DashSettingsProvider {
   @override
   String get modelPath => '';
   @override
+  bool get useVehicle3d => false;
+  @override
   bool get reduceMotion => true;
   @override
   bool get isLowResourceDevice => false;

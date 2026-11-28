@@ -17,6 +17,8 @@ import '../services/supabase_service.dart';
 import '../services/sync_service.dart';
 import '../services/resource_service.dart';
 import '../services/manual_vehicle_service.dart';
+import '../services/glb_inspector.dart';
+import 'package:path_provider/path_provider.dart';
 
 enum DashboardStyle {
   sporty,
@@ -201,6 +203,35 @@ class DashSettingsProvider extends ChangeNotifier {
   String _vehicleColorHex = '#FFFFFF';
   int _vehicleLightsOn = 19 * 60;
   int _vehicleLightsOff = 7 * 60;
+  bool _useVehicle3d = false;
+  bool get useVehicle3d => _useVehicle3d;
+  Future<void> importOptionalVehicleGlb(String path) async {
+    final source = File(path);
+    final profile = await inspectGlb(source);
+    if (profile.unsupportedExtensions.isNotEmpty)
+      throw const FormatException(
+        'Este GLB requiere extensiones no compatibles.',
+      );
+    final folder = Directory(
+      '${(await getApplicationDocumentsDirectory()).path}/optional_vehicle',
+    );
+    await folder.create(recursive: true);
+    final next = File(
+      '${folder.path}/vehicle-${DateTime.now().microsecondsSinceEpoch}.glb',
+    );
+    await source.copy(next.path);
+    _modelPath = Uri.file(next.path).toString();
+    await _saveLocalSettings();
+    await setUseVehicle3d(true);
+  }
+
+  Future<void> setUseVehicle3d(bool value) async {
+    _useVehicle3d = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('use_vehicle_3d', value);
+  }
+
   int get vehicleLightsOn => _vehicleLightsOn;
   int get vehicleLightsOff => _vehicleLightsOff;
 
@@ -996,6 +1027,7 @@ class DashSettingsProvider extends ChangeNotifier {
     }
     _vehicleLightsOn = prefs.getInt('vehicle_lights_on') ?? 19 * 60;
     _vehicleLightsOff = prefs.getInt('vehicle_lights_off') ?? 7 * 60;
+    _useVehicle3d = prefs.getBool('use_vehicle_3d') ?? false;
     _vehicleCameraOrbit =
         prefs.getString('vehicle_camera_orbit') ?? '0deg 75deg 5m';
     _vehicleCameraZoom = prefs.getDouble('vehicle_camera_zoom') ?? 1.0;
@@ -1582,6 +1614,12 @@ class DashSettingsProvider extends ChangeNotifier {
   }
 
   void selectVehicle(Vehicle vehicle) {
+    _useVehicle3d = false;
+    unawaited(
+      SharedPreferences.getInstance().then(
+        (prefs) => prefs.setBool('use_vehicle_3d', false),
+      ),
+    );
     _selectedVehicle = vehicle;
     SharedPreferences.getInstance().then((prefs) async {
       if (vehicle.id.startsWith('local-')) {
