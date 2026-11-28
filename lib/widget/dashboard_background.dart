@@ -24,7 +24,11 @@ class DashboardBackground extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    if (image == 'CARBON_LOCAL') {
+    if (image == 'CARBON_LOCAL' ||
+        RegExp(
+          r'carbon|car1\.png|defaultpreview',
+          caseSensitive: false,
+        ).hasMatch(image)) {
       return Positioned.fill(
         child: DecoratedBox(
           decoration: BoxDecoration(
@@ -46,7 +50,7 @@ class DashboardBackground extends StatelessWidget {
     if (image == 'STARS_LOCAL') {
       return Positioned.fill(
         child: Opacity(
-          opacity: opacity.clamp(0.0, 1.0),
+          opacity: opacity.clamp(0.65, 1.0),
           child: RepaintBoundary(
             child: CustomPaint(painter: const _LocalStars()),
           ),
@@ -125,13 +129,24 @@ class _LocalStars extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint();
-    for (var i = 0; i < 80; i++) {
-      paint.color = const Color(
-        0xFFCFDEF1,
-      ).withValues(alpha: .25 + i % 9 * .08);
+    canvas.drawRect(
+      Offset.zero & size,
+      paint
+        ..shader = const RadialGradient(
+          center: Alignment(-.4, .1),
+          radius: .95,
+          colors: [Color(0xFF142C43), Color(0xFF111728), Color(0xFF02050B)],
+          stops: [0, .4, 1],
+        ).createShader(Offset.zero & size),
+    );
+    paint.shader = null;
+    for (var i = 0; i < 230; i++) {
+      paint.color =
+          (i % 12 == 0 ? const Color(0xFFEFD7B5) : const Color(0xFFCFDEF1))
+              .withValues(alpha: .14 + i % 9 * .07);
       canvas.drawCircle(
         Offset((i * .618034 % 1) * size.width, (i * .414214 % 1) * size.height),
-        i % 13 == 0 ? 1.45 : .65,
+        i % 23 == 0 ? 1.3 : .4 + (i % 3) * .18,
         paint,
       );
     }

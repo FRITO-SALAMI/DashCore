@@ -1,5 +1,7 @@
 import '../display_units.dart';
 import 'dart:convert';
+import 'dart:async';
+import 'package:geolocator/geolocator.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -9,6 +11,7 @@ import '../../providers/dash_settings_provider.dart';
 import '../../models/gadget_config.dart';
 import '../editable_gadget_wrapper.dart';
 import '../dashboard_background.dart';
+import '../../providers/obd_provider.dart';
 
 // ============================================================
 // VIEWBOX DEL SVG — NO CAMBIAR
@@ -85,7 +88,40 @@ class OrbitWorldDashboard extends StatefulWidget {
 }
 
 class _OrbitWorldDashboardState extends State<OrbitWorldDashboard>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  ObdProvider? _locationOwner;
+  StreamSubscription<Position>? _locationUpdates;
+  Position? _location;
+  bool _foreground = true;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    _syncLocation();
+  }
+
+  void _syncLocation() {
+    final visible =
+        _foreground &&
+        TickerMode.of(context) &&
+        (ModalRoute.isCurrentOf(context) ?? true);
+    if (!visible) {
+      _locationUpdates?.cancel();
+      _locationUpdates = null;
+      _locationOwner?.releaseVisualLocation();
+      _locationOwner = null;
+      return;
+    }
+    final provider = context.read<ObdProvider?>();
+    if (provider == null || _locationOwner != null) return;
+    _locationOwner = provider;
+    _location = provider.lastGpsPosition;
+    _locationUpdates = provider.gpsPositions.listen((position) {
+      if (mounted) setState(() => _location = position);
+    });
+    unawaited(provider.acquireVisualLocation());
+  }
+
   late AnimationController _pulseController;
   late _ThrottledListenable _throttled;
   final Map<String, GadgetConfig> _gadgets = {
@@ -118,6 +154,7 @@ class _OrbitWorldDashboardState extends State<OrbitWorldDashboard>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
@@ -129,6 +166,7 @@ class _OrbitWorldDashboardState extends State<OrbitWorldDashboard>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _syncLocation();
     final reduce =
         MediaQuery.maybeDisableAnimationsOf(context) == true ||
         !TickerMode.of(context);
@@ -141,6 +179,9 @@ class _OrbitWorldDashboardState extends State<OrbitWorldDashboard>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _locationUpdates?.cancel();
+    _locationOwner?.releaseVisualLocation();
     _throttled.dispose();
     _pulseController.dispose();
     super.dispose();
@@ -149,6 +190,7 @@ class _OrbitWorldDashboardState extends State<OrbitWorldDashboard>
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<DashSettingsProvider>();
+    final position = _location;
     final accentColor = settings.accentColor;
     final lowResource = settings.isLowResourceDevice;
     final isGifBackground = settings.backgroundImage?.endsWith('.gif') ?? false;
@@ -196,7 +238,14 @@ class _OrbitWorldDashboardState extends State<OrbitWorldDashboard>
                 accent: accentColor,
                 lowResource: lowResource,
                 pulse: _throttled,
-                liveStat: widget.liveStat ?? _dominicanMarker,
+                liveStat: position == null
+                    ? null
+                    : GlobeLiveStat(
+                        lat: position.latitude,
+                        lon: position.longitude,
+                        label: 'TU',
+                        value: '',
+                      ),
                 landColor: settings.needleColor,
               ),
             ),
@@ -257,16 +306,6 @@ class _OrbitWorldDashboardState extends State<OrbitWorldDashboard>
       ),
     );
   }
-
-  static const _dominicanMarker = GlobeLiveStat(
-    lat: 18.35,
-    lon: -70.15,
-    // Centro medido del contorno DO en world_map.svg. Ese recurso usa
-    // una proyección ilustrada, no latitud/longitud lineal.
-    mapPoint: Offset(592.92, 381.59),
-    label: 'REP. DOMINICANA',
-    value: 'RD',
-  );
 
   Future<void> _loadGadgets() async {
     final prefs = await SharedPreferences.getInstance();

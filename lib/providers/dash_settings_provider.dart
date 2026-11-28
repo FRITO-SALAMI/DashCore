@@ -199,6 +199,21 @@ class DashSettingsProvider extends ChangeNotifier {
 
   String _modelPath = '';
   String _vehicleColorHex = '#FFFFFF';
+  int _vehicleLightsOn = 19 * 60;
+  int _vehicleLightsOff = 7 * 60;
+  int get vehicleLightsOn => _vehicleLightsOn;
+  int get vehicleLightsOff => _vehicleLightsOff;
+
+  Future<void> setVehicleLightSchedule(int on, int off) async {
+    if (on == off || on < 0 || on >= 1440 || off < 0 || off >= 1440) return;
+    _vehicleLightsOn = on;
+    _vehicleLightsOff = off;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('vehicle_lights_on', on);
+    await prefs.setInt('vehicle_lights_off', off);
+  }
+
   String _vehicleCameraOrbit = '0deg 75deg 5m';
   double _vehicleCameraZoom = 1.0;
 
@@ -279,6 +294,7 @@ class DashSettingsProvider extends ChangeNotifier {
     _dashboardVisible = visible;
     if (!visible) unawaited(_probeInternetAndSync());
   }
+
   DateTime? _lastDrivingSampleAt;
   bool _isAppActive = true;
   bool _statsDirty = false;
@@ -406,7 +422,8 @@ class DashSettingsProvider extends ChangeNotifier {
   /// available on low-resource devices, but receive fewer UI updates.
   int get telemetryFramesPerSecond {
     if (reduceOrbitMotion) return 8;
-    if (_isLowResourceDevice && _performanceMode == PerformanceMode.auto) return 12;
+    if (_isLowResourceDevice && _performanceMode == PerformanceMode.auto)
+      return 12;
     switch (_performanceMode) {
       case PerformanceMode.auto:
         return _isLowResourceDevice ? 15 : 20;
@@ -666,6 +683,10 @@ class DashSettingsProvider extends ChangeNotifier {
           if (vehicle.id == selectedId) {
             _selectedVehicle = vehicle;
             unawaited(prefs.setString('ignition_vehicle_brand', vehicle.brand));
+            unawaited(prefs.setString('dashmix_vehicle_model', vehicle.name));
+            unawaited(
+              prefs.setString('dashmix_vehicle_year', vehicle.year ?? ''),
+            );
             unawaited(_resolveVehicleLogo(vehicle, downloadIfMissing: false));
             if (vehicle.isDownloaded) {
               _modelPath = vehicle.modelPath;
@@ -890,7 +911,8 @@ class DashSettingsProvider extends ChangeNotifier {
   }
 
   void _loadLocalSettings(SharedPreferences prefs) {
-    _roadAtlasVehicleOnRight = prefs.getBool('road_atlas_vehicle_right') ?? false;
+    _roadAtlasVehicleOnRight =
+        prefs.getBool('road_atlas_vehicle_right') ?? false;
     final styleIndex =
         prefs.getInt('selected_style_idx') ?? DashboardStyle.nightDrive.index;
 
@@ -961,6 +983,19 @@ class DashSettingsProvider extends ChangeNotifier {
     _modelPath = prefs.getString('model_path') ?? _modelPath;
 
     _vehicleColorHex = prefs.getString('vehicle_color_hex') ?? '#FFFFFF';
+    final localVehicle = prefs.getString('local_vehicle_name');
+    if (localVehicle != null) {
+      _selectedVehicle = Vehicle(
+        id: prefs.getString('local_vehicle_id') ?? 'local-generic',
+        name: localVehicle,
+        brand: prefs.getString('local_vehicle_brand') ?? 'Genérico',
+        year: prefs.getString('local_vehicle_year'),
+        backgroundImage: '',
+        modelPath: '',
+      );
+    }
+    _vehicleLightsOn = prefs.getInt('vehicle_lights_on') ?? 19 * 60;
+    _vehicleLightsOff = prefs.getInt('vehicle_lights_off') ?? 7 * 60;
     _vehicleCameraOrbit =
         prefs.getString('vehicle_camera_orbit') ?? '0deg 75deg 5m';
     _vehicleCameraZoom = prefs.getDouble('vehicle_camera_zoom') ?? 1.0;
@@ -1115,6 +1150,11 @@ class DashSettingsProvider extends ChangeNotifier {
   Future<void> _persistLocalSettings() async {
     final prefs = await SharedPreferences.getInstance();
 
+    await prefs.setString(
+      'dashmix_vehicle_model',
+      _selectedVehicle?.name ?? '',
+    );
+    await prefs.setString('dashmix_vehicle_year', _selectedVehicle?.year ?? '');
     await prefs.setInt('selected_style_idx', _selectedStyle.index);
     await prefs.setBool('road_atlas_vehicle_right', _roadAtlasVehicleOnRight);
 
@@ -1440,7 +1480,9 @@ class DashSettingsProvider extends ChangeNotifier {
       final addresses = await InternetAddress.lookup(
         Uri.parse(BackendConfig.url).host,
       ).timeout(const Duration(seconds: 4));
-      if (!_dashboardVisible && addresses.isNotEmpty && addresses.first.rawAddress.isNotEmpty) {
+      if (!_dashboardVisible &&
+          addresses.isNotEmpty &&
+          addresses.first.rawAddress.isNotEmpty) {
         await syncProfileToSupabase(showProgress: true);
       }
     } catch (_) {
@@ -1541,9 +1583,22 @@ class DashSettingsProvider extends ChangeNotifier {
 
   void selectVehicle(Vehicle vehicle) {
     _selectedVehicle = vehicle;
-    if (vehicle.paintColorHex != null) _vehicleColorHex = vehicle.paintColorHex!;
-    unawaited(_resolveVehicleLogo(vehicle, downloadIfMissing: false));
-    SyncService.instance.updateSelectedVehicle(vehicle.id);
+    SharedPreferences.getInstance().then((prefs) async {
+      if (vehicle.id.startsWith('local-')) {
+        await prefs.setString('local_vehicle_name', vehicle.name);
+        await prefs.setString('local_vehicle_brand', vehicle.brand);
+        await prefs.setString('local_vehicle_year', vehicle.year ?? '');
+        await prefs.setString('local_vehicle_id', vehicle.id);
+      } else {
+        await prefs.remove('local_vehicle_name');
+      }
+    });
+    if (vehicle.paintColorHex != null)
+      _vehicleColorHex = vehicle.paintColorHex!;
+    if (!vehicle.id.startsWith('local-')) {
+      unawaited(_resolveVehicleLogo(vehicle, downloadIfMissing: false));
+      SyncService.instance.updateSelectedVehicle(vehicle.id);
+    }
     if (vehicle.isDownloaded) {
       _modelPath = vehicle.modelPath;
       _backgroundImage = vehicle.backgroundImage;
@@ -1575,7 +1630,8 @@ class DashSettingsProvider extends ChangeNotifier {
       final updated = vehicle.copyWith(paintColorHex: hex);
       _selectedVehicle = updated;
       _availableVehicles = _availableVehicles
-          .map((entry) => entry.id == updated.id ? updated : entry).toList();
+          .map((entry) => entry.id == updated.id ? updated : entry)
+          .toList();
       unawaited(ManualVehicleService.save(_availableVehicles));
     }
     notifyListeners();

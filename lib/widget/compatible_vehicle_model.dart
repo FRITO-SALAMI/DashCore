@@ -276,9 +276,6 @@ class _CompatibleVehicleModelState extends State<CompatibleVehicleModel> {
     );
     final rearArtwork = widget.rearView ? settings.rearArtwork : null;
     if (widget.preferLightPreview) {
-      if (rearArtwork != null && rearArtwork.isNotEmpty) {
-        return _VehicleLightView(artwork: rearArtwork, preview: null);
-      }
       return VehicleTopView(
         colorHex: settings.color,
         vehicle: settings.vehicle,

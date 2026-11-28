@@ -71,7 +71,7 @@ class _VehicleStageState extends State<VehicleStage> {
         ),
         Padding(
           padding: const EdgeInsets.only(top: 24, bottom: 30),
-          child: hasVehicle && (!_photo || artwork == null)
+          child: !_photo || artwork == null
               ? VehicleTopView(
                   colorHex: context.select(
                     (DashSettingsProvider? settings) =>

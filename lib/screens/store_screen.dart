@@ -7,6 +7,7 @@ import '../widget/gauges/instrument_cluster_v2.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import '../widget/vehicle_top_view.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -298,9 +299,16 @@ class _StoreScreenState extends State<StoreScreen> {
         );
       case DashboardStyle.apexGt:
       case DashboardStyle.carbonPulse:
-        return VelocityDashboard.preview(style, context.read<DashSettingsProvider>());
+        return VelocityDashboard.preview(
+          style,
+          context.read<DashSettingsProvider>(),
+        );
       case DashboardStyle.roadAtlas:
-        return const RoadAtlasDashboard(data: ObdData(speed: 48), source: 'VISTA PREVIA', preview: true);
+        return const RoadAtlasDashboard(
+          data: ObdData(speed: 48),
+          source: 'VISTA PREVIA',
+          preview: true,
+        );
       case DashboardStyle.racing:
         imagePath = 'sporty.png';
         break;
@@ -344,10 +352,17 @@ class _StoreScreenState extends State<StoreScreen> {
         imagePath = 'Dashcorepro.png';
         break;
       case DashboardStyle.vehicle3D:
-        imagePath = 'vehicle3d.jpeg';
-        break;
+        final vehicleSettings = context.read<DashSettingsProvider>();
+        return VehicleTopView(
+          colorHex: vehicleSettings.vehicleColorHex,
+          vehicle: vehicleSettings.selectedVehicle,
+        );
       case DashboardStyle.dashcorevideo:
-        return Image.asset('assets/videos/road_poster.jpg', fit: BoxFit.cover, cacheWidth: 320);
+        return Image.asset(
+          'assets/videos/road_poster.jpg',
+          fit: BoxFit.cover,
+          cacheWidth: 320,
+        );
       case DashboardStyle.raceCluster:
         imagePath = 'raceclusterpreview.png';
         break;
@@ -374,19 +389,25 @@ class _StoreScreenState extends State<StoreScreen> {
       {
         'style': DashboardStyle.roadAtlas,
         'title': 'ROAD ATLAS',
-        'desc': isSpanish ? 'Tu vehículo con mapa en vivo' : 'Your vehicle with a live map',
+        'desc': isSpanish
+            ? 'Tu vehículo con mapa en vivo'
+            : 'Your vehicle with a live map',
         'cat': 'free',
       },
       {
         'style': DashboardStyle.apexGt,
         'title': 'APEX GT',
-        'desc': isSpanish ? 'Dos instrumentos y tu vehículo al centro' : 'Twin gauges with your vehicle in the center',
+        'desc': isSpanish
+            ? 'Dos instrumentos y tu vehículo al centro'
+            : 'Twin gauges with your vehicle in the center',
         'cat': 'free',
       },
       {
         'style': DashboardStyle.carbonPulse,
         'title': 'CARBON PULSE',
-        'desc': isSpanish ? 'Velocímetro de aguja con lectura digital' : 'Needle speedometer with a digital readout',
+        'desc': isSpanish
+            ? 'Velocímetro de aguja con lectura digital'
+            : 'Needle speedometer with a digital readout',
         'cat': 'free',
       },
       {
@@ -409,7 +430,7 @@ class _StoreScreenState extends State<StoreScreen> {
       },
       {
         'style': DashboardStyle.vehicle3D,
-        'title': 'VEHICLE 3D',
+        'title': 'VISTA CENITAL',
         'desc': 'Interactive model',
         'cat': 'free',
       },
@@ -623,8 +644,13 @@ class _StoreScreenState extends State<StoreScreen> {
                                     }
                                   },
                                   child: AnimatedContainer(
-                                    duration: settings.reduceMotion || MediaQuery.disableAnimationsOf(context)
-                                        ? Duration.zero : const Duration(milliseconds: 140),
+                                    duration:
+                                        settings.reduceMotion ||
+                                            MediaQuery.disableAnimationsOf(
+                                              context,
+                                            )
+                                        ? Duration.zero
+                                        : const Duration(milliseconds: 140),
                                     decoration: BoxDecoration(
                                       color: AppColors.cardBg,
                                       borderRadius: BorderRadius.circular(16),
@@ -648,12 +674,23 @@ class _StoreScreenState extends State<StoreScreen> {
                                               heightFactor: .60,
                                               widthFactor: 1,
                                               child: Padding(
-                                                padding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
+                                                padding:
+                                                    const EdgeInsets.fromLTRB(
+                                                      6,
+                                                      6,
+                                                      6,
+                                                      0,
+                                                    ),
                                                 child: ClipRRect(
-                                                  borderRadius: BorderRadius.circular(10),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
                                                   child: Opacity(
                                                     opacity: isLocked ? .4 : 1,
-                                                    child: IgnorePointer(child: _buildStylePreview(style)),
+                                                    child: IgnorePointer(
+                                                      child: _buildStylePreview(
+                                                        style,
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
                                               ),
@@ -998,7 +1035,9 @@ class _StoreScreenState extends State<StoreScreen> {
                   fit: StackFit.expand,
                   children: [
                     TickerMode(
-                      enabled: !settings.isLowResourceDevice && !settings.reduceMotion,
+                      enabled:
+                          !settings.isLowResourceDevice &&
+                          !settings.reduceMotion,
                       child: Image(
                         image: ResizeImage(
                           FileImage(file),
@@ -1008,7 +1047,8 @@ class _StoreScreenState extends State<StoreScreen> {
                         ),
                         fit: BoxFit.cover,
                         filterQuality: FilterQuality.low,
-                        errorBuilder: (_, _, _) => const ColoredBox(color: Color(0xFF11151C)),
+                        errorBuilder: (_, _, _) =>
+                            const ColoredBox(color: Color(0xFF11151C)),
                       ),
                     ),
                     Container(color: Colors.black.withOpacity(0.2)),

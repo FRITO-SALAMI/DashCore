@@ -1,0 +1,7 @@
+Santo Domingo road network and local address index
+Source https://download.geofabrik.de/central-america/haiti-and-domrep-latest.osm.pbf
+Extracted 2026-11-28. Bounds south 18.39 west -70.08 north 18.62 east -69.76.
+Copyright OpenStreetMap contributors, available under ODbL 1.0.
+https://www.openstreetmap.org/copyright
+https://opendatacommons.org/licenses/odbl/1-0/
+Map data contains gaps. Address search covers entries mapped in OpenStreetMap.

@@ -48,6 +48,10 @@ class PreviewSettings implements DashSettingsProvider {
   @override
   String get vehicleColorHex => '#D5DDE9';
   @override
+  int get vehicleLightsOn => 1140;
+  @override
+  int get vehicleLightsOff => 420;
+  @override
   double displaySpeed(num kmh) => kmh.toDouble();
   @override
   Color get accentColor => const Color(0xFF00E5FF);

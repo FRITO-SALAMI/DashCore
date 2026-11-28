@@ -190,7 +190,7 @@ class HiddenMenuOverlay extends StatelessWidget {
                                 _SideMenuItem(
                                   key: TutorialKeys.workshopMenuEntryKey,
                                   icon: Icons.build_rounded,
-                                  label: loc.translate('workshop').toUpperCase(),
+                                  label: 'DIAGNÓSTICO',
                                   isSelected: currentIndex == 4,
                                   onTap: () {
                                     onItemSelected(4);

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -17,7 +16,7 @@ class _ManualVehicleScreenState extends State<ManualVehicleScreen> {
   final _brand = TextEditingController(),
       _name = TextEditingController(),
       _year = TextEditingController();
-  String? _model, _photo, _rearPhoto;
+  String? _photo, _rearPhoto;
   String _color = '#EDF1F5';
   static const _paintOptions = {
     '#EDF1F5': ('Blanco', Color(0xFFEDF1F5)),
@@ -28,6 +27,22 @@ class _ManualVehicleScreenState extends State<ManualVehicleScreen> {
     '#407A69': ('Verde', Color(0xFF407A69)),
   };
   bool _busy = false, _ai = false;
+  Future<void> _choosePhoto(bool rear) async {
+    final photo = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1280,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (photo == null || !mounted) return;
+    setState(() {
+      if (rear)
+        _rearPhoto = photo.path;
+      else
+        _photo = photo.path;
+    });
+  }
+
   @override
   void dispose() {
     _brand.dispose();
@@ -45,7 +60,6 @@ class _ManualVehicleScreenState extends State<ManualVehicleScreen> {
         name: _name.text,
         brand: _brand.text,
         year: _year.text,
-        glbPath: _model,
         paintColorHex: _color,
       );
       if (_photo != null)
@@ -120,7 +134,7 @@ class _ManualVehicleScreenState extends State<ManualVehicleScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Agrega tu vehículo, una foto o tu modelo GLB. El vehículo funciona también sin internet.',
+            'Agrega tu vehículo. Su vista superior funciona sin descargar modelos. Puedes guardar fotos en tu ficha.',
             style: TextStyle(color: Colors.white60),
           ),
           const SizedBox(height: 24),
@@ -174,57 +188,14 @@ class _ManualVehicleScreenState extends State<ManualVehicleScreen> {
             runSpacing: 12,
             children: [
               OutlinedButton.icon(
-                onPressed: _busy
-                    ? null
-                    : () async {
-                        final photo = await ImagePicker().pickImage(
-                          source: ImageSource.gallery,
-                          maxWidth: 1280,
-                          maxHeight: 1024,
-                          imageQuality: 85,
-                        );
-                        if (photo != null && mounted)
-                          setState(() => _photo = photo.path);
-                      },
-                icon: const Icon(Icons.add_photo_alternate_outlined),
-                label: Text(_photo == null ? 'AGREGAR FOTO' : 'CAMBIAR FOTO'),
+                onPressed: _busy ? null : () => _choosePhoto(false),
+                icon: const Icon(Icons.photo_outlined),
+                label: const Text('FOTO DEL VEHÍCULO'),
               ),
               OutlinedButton.icon(
-                onPressed: _busy
-                    ? null
-                    : () async {
-                        final photo = await ImagePicker().pickImage(
-                          source: ImageSource.gallery,
-                          maxWidth: 1280,
-                          maxHeight: 1024,
-                          imageQuality: 85,
-                        );
-                        if (photo != null && mounted)
-                          setState(() => _rearPhoto = photo.path);
-                      },
+                onPressed: _busy ? null : () => _choosePhoto(true),
                 icon: const Icon(Icons.camera_rear_outlined),
-                label: Text(
-                  _rearPhoto == null
-                      ? 'AGREGAR FOTO TRASERA'
-                      : 'CAMBIAR FOTO TRASERA',
-                ),
-              ),
-              OutlinedButton.icon(
-                onPressed: _busy
-                    ? null
-                    : () async {
-                        final result = await FilePicker.platform.pickFiles(
-                          type: FileType.custom,
-                          allowedExtensions: ['glb'],
-                          withData: false,
-                        );
-                        if (result?.files.single.path != null && mounted)
-                          setState(() => _model = result!.files.single.path);
-                      },
-                icon: const Icon(Icons.view_in_ar_outlined),
-                label: Text(
-                  _model == null ? 'IMPORTAR GLB' : 'GLB SELECCIONADO',
-                ),
+                label: const Text('FOTO TRASERA'),
               ),
             ],
           ),
@@ -263,14 +234,6 @@ class _ManualVehicleScreenState extends State<ManualVehicleScreen> {
                 style: TextStyle(color: Colors.white60),
               ),
           ],
-          if (_model != null)
-            const Padding(
-              padding: EdgeInsets.only(top: 16),
-              child: Text(
-                'El visor revisa el GLB antes de abrirlo. En radios de poca memoria se ofrece una vista ligera.',
-                style: TextStyle(color: Colors.white60),
-              ),
-            ),
           if (_busy)
             const Padding(
               padding: EdgeInsets.only(top: 20),

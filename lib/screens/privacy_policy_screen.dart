@@ -5,7 +5,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
   static const version = '3.0';
   static const summary = '''
 UBICACIÓN Y OBD EN EL DISPOSITIVO
-La posición GPS, el rumbo y el recorrido temporal se procesan en el equipo. Si activas el mapa de Road Atlas, se solicitan teselas del área visible a OpenStreetMap, que puede inferir el área aproximada y ver tu dirección IP. El recorrido no se envía y se descarta al salir de la vista. Las teselas pueden quedar en la caché temporal del equipo.
+La posición GPS, el rumbo y el recorrido temporal se procesan en el equipo. Road Atlas incluye un mapa de Santo Domingo basado en OpenStreetMap. La búsqueda de direcciones y el cálculo de rutas de esa zona funcionan localmente. El recorrido y las búsquedas no se envían a un servicio de mapas. La cobertura y las direcciones disponibles dependen de los datos de OpenStreetMap incluidos en esta versión.
 
 CUENTA Y SINCRONIZACIÓN
 Supabase gestiona la cuenta, perfil, avatar, preferencias, estilos elegidos, catálogo y estadísticas de DashLeague. DashLeague utiliza distancia acumulada y velocidad máxima; no recibe posiciones GPS ni recorridos. Los recursos grandes se descargan bajo demanda.

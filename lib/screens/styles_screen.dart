@@ -5,6 +5,7 @@ import '../core/app_colors.dart';
 import '../models/obd_data.dart';
 import '../widget/gauges/instrument_cluster_v2.dart';
 import 'package:flutter/material.dart';
+import '../widget/vehicle_top_view.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../providers/dash_settings_provider.dart';
@@ -33,10 +34,17 @@ class _StylesScreenState extends State<StylesScreen> {
 
   Widget _buildStylePreview(DashboardStyle style) {
     if (style == DashboardStyle.roadAtlas) {
-      return const RoadAtlasDashboard(data: ObdData(speed: 48), source: 'VISTA PREVIA', preview: true);
+      return const RoadAtlasDashboard(
+        data: ObdData(speed: 48),
+        source: 'VISTA PREVIA',
+        preview: true,
+      );
     }
     if (style == DashboardStyle.apexGt || style == DashboardStyle.carbonPulse) {
-      return VelocityDashboard.preview(style, context.read<DashSettingsProvider>());
+      return VelocityDashboard.preview(
+        style,
+        context.read<DashSettingsProvider>(),
+      );
     }
     final design = switch (style) {
       DashboardStyle.sporty => ClusterDesign.sport,
@@ -109,10 +117,17 @@ class _StylesScreenState extends State<StylesScreen> {
         imagePath = 'Dashcorepro.png';
         break;
       case DashboardStyle.dashcorevideo:
-        return Image.asset('assets/videos/road_poster.jpg', fit: BoxFit.cover, cacheWidth: 320);
+        return Image.asset(
+          'assets/videos/road_poster.jpg',
+          fit: BoxFit.cover,
+          cacheWidth: 320,
+        );
       case DashboardStyle.vehicle3D:
-        imagePath = 'vehicle3d.jpeg';
-        break;
+        final vehicleSettings = context.read<DashSettingsProvider>();
+        return VehicleTopView(
+          colorHex: vehicleSettings.vehicleColorHex,
+          vehicle: vehicleSettings.selectedVehicle,
+        );
       case DashboardStyle.teslaRoad:
         imagePath = 'sporty.png';
         break;
@@ -153,7 +168,7 @@ class _StylesScreenState extends State<StylesScreen> {
             DashboardStyle.dashcorevideo => 'CARRETERA NOCTURNA',
             DashboardStyle.freeDashboard => 'DRIVE CORE',
             DashboardStyle.purpleMaps => 'PURPLE DRIVE',
-            DashboardStyle.vehicle3D => 'VEHICLE 3D',
+            DashboardStyle.vehicle3D => 'VISTA CENITAL',
             DashboardStyle.myStyle => 'MI ESTILO',
             _ =>
               style.name
@@ -253,19 +268,31 @@ class _StylesScreenState extends State<StylesScreen> {
                         child: TextButton.icon(
                           onPressed: settings.flipRoadAtlasPanels,
                           icon: const Icon(Icons.swap_horiz),
-                          label: Text(settings.roadAtlasVehicleOnRight
-                              ? 'Mover vehículo a la izquierda'
-                              : 'Mover vehículo a la derecha'),
+                          label: Text(
+                            settings.roadAtlasVehicleOnRight
+                                ? 'Mover vehículo a la izquierda'
+                                : 'Mover vehículo a la derecha',
+                          ),
                         ),
                       ),
                     const SizedBox(height: 14),
                     Wrap(
-                      spacing: 8, runSpacing: 6,
+                      spacing: 8,
+                      runSpacing: 6,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        const Text('Acento', style: TextStyle(color: AppColors.textSecondaryColor)),
-                        for (final color in const [AppColors.accent, AppColors.secondaryAccent,
-                          Color(0xFF88DAB3), Color(0xFFFFBD82), Color(0xFFF38A98), Color(0xFFE3EAF6)])
+                        const Text(
+                          'Acento',
+                          style: TextStyle(color: AppColors.textSecondaryColor),
+                        ),
+                        for (final color in const [
+                          AppColors.accent,
+                          AppColors.secondaryAccent,
+                          Color(0xFF88DAB3),
+                          Color(0xFFFFBD82),
+                          Color(0xFFF38A98),
+                          Color(0xFFE3EAF6),
+                        ])
                           ChoiceChip(
                             avatar: CircleAvatar(backgroundColor: color),
                             label: const Text(' '),

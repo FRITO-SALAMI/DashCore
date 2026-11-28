@@ -13,10 +13,12 @@ class VehicleTopView extends StatefulWidget {
     required this.colorHex,
     this.vehicle,
     this.source = '',
+    this.hoodOpen = false,
   });
   final String colorHex;
   final Vehicle? vehicle;
   final String source;
+  final bool hoodOpen;
 
   @override
   State<VehicleTopView> createState() => _VehicleTopViewState();
@@ -27,6 +29,16 @@ class _VehicleTopViewState extends State<VehicleTopView>
   Timer? _transition;
   bool _night = false;
   bool _foreground = true;
+  int _on = 19 * 60, _off = 7 * 60;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final settings = context.watch<DashSettingsProvider?>();
+    _on = settings?.vehicleLightsOn ?? 19 * 60;
+    _off = settings?.vehicleLightsOff ?? 7 * 60;
+    _updateNight();
+  }
 
   @override
   void initState() {
@@ -45,13 +57,31 @@ class _VehicleTopViewState extends State<VehicleTopView>
     _transition?.cancel();
     if (!_foreground) return;
     final now = DateTime.now();
-    final night = now.hour < 7 || now.hour >= 19;
-    final next = DateTime(
-      now.year,
-      now.month,
-      now.day + (now.hour >= 19 ? 1 : 0),
-      now.hour < 7 || now.hour >= 19 ? 7 : 19,
-    );
+    final minute = now.hour * 60 + now.minute;
+    final night = _on < _off
+        ? minute >= _on && minute < _off
+        : minute >= _on || minute < _off;
+    DateTime boundary(int minutes) {
+      var date = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        minutes ~/ 60,
+        minutes % 60,
+      );
+      if (!date.isAfter(now))
+        date = DateTime(
+          now.year,
+          now.month,
+          now.day + 1,
+          minutes ~/ 60,
+          minutes % 60,
+        );
+      return date;
+    }
+
+    final on = boundary(_on), off = boundary(_off);
+    final next = on.isBefore(off) ? on : off;
     if (_night != night) setState(() => _night = night);
     _transition = Timer(next.difference(now), _updateNight);
   }
@@ -95,7 +125,12 @@ class _VehicleTopViewState extends State<VehicleTopView>
           curve: Curves.easeOutCubic,
           child: const SizedBox.expand(),
           builder: (context, lighting, child) => CustomPaint(
-            painter: _TopViewPainter(color, silhouette, lighting),
+            painter: _TopViewPainter(
+              color,
+              silhouette,
+              lighting,
+              widget.hoodOpen,
+            ),
             child: child,
           ),
         ),
@@ -150,7 +185,8 @@ enum _Silhouette {
 }
 
 class _TopViewPainter extends CustomPainter {
-  const _TopViewPainter(this.color, this.model, this.lighting);
+  const _TopViewPainter(this.color, this.model, this.lighting, this.hoodOpen);
+  final bool hoodOpen;
   final Color color;
   final _Silhouette model;
   final double lighting;
@@ -246,6 +282,93 @@ class _TopViewPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = .75;
     canvas.drawPath(body, paint);
+
+    // Stamped hood creases and a recessed grille retain depth at radio sizes.
+    paint.style = PaintingStyle.stroke;
+    for (final side in [-1.0, 1.0]) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(side * w * .42, -l + 12)
+          ..quadraticBezierTo(
+            side * w * .62,
+            -l + 27,
+            side * w * .64,
+            hood - 9,
+          ),
+        paint
+          ..color = const Color(0x88707D8F)
+          ..strokeWidth = .8,
+      );
+      canvas.drawPath(
+        Path()
+          ..moveTo(side * (w - 3), hood + 18)
+          ..lineTo(side * (w - 4), deck + 5),
+        paint
+          ..color = const Color(0x885A6B80)
+          ..strokeWidth = .7,
+      );
+      for (final y in [hood + 28, deck - 8]) {
+        canvas.drawLine(
+          Offset(side * (w - 5), y),
+          Offset(side * (w - 5), y + 6),
+          paint
+            ..color = const Color(0xFFCFD9E4)
+            ..strokeWidth = 1.4,
+        );
+      }
+    }
+    paint.style = PaintingStyle.fill;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTRB(-w * .42, -l + 3, w * .42, -l + 8),
+        const Radius.circular(3),
+      ),
+      paint..color = const Color(0xFF111B26),
+    );
+    if (hoodOpen) {
+      final bay = Rect.fromLTRB(-w * .72, -l + 17, w * .72, hood - 6);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(bay, const Radius.circular(7)),
+        paint..color = const Color(0xFF060B10),
+      );
+      final engine = Rect.fromCenter(
+        center: bay.center,
+        width: bay.width * .57,
+        height: bay.height * .62,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(engine, const Radius.circular(4)),
+        paint
+          ..shader = const LinearGradient(
+            colors: [Color(0xFF637286), Color(0xFF1E2D3B), Color(0xFF425468)],
+          ).createShader(engine),
+      );
+      paint.shader = null;
+      for (var i = 0; i < 4; i++) {
+        final y = engine.top + 4 + i * (engine.height - 8) / 4;
+        canvas.drawLine(
+          Offset(engine.left + 3, y),
+          Offset(engine.right - 3, y),
+          paint
+            ..color = const Color(0xFF91A1B0)
+            ..strokeWidth = 1,
+        );
+      }
+      canvas.drawCircle(
+        Offset(bay.right - 5, bay.top + 6),
+        3,
+        paint..color = const Color(0xFFFFC04F),
+      );
+      canvas.drawRect(
+        Rect.fromLTWH(bay.left + 3, bay.top + 4, 8, 11),
+        paint..color = const Color(0xFF3E5565),
+      );
+      canvas.drawCircle(
+        Offset(bay.left + 6, bay.top + 5),
+        1.5,
+        paint..color = const Color(0xFFF36662),
+      );
+    }
 
     final cabin = Path()
       ..moveTo(-w * .77, hood)
@@ -390,5 +513,6 @@ class _TopViewPainter extends CustomPainter {
   bool shouldRepaint(covariant _TopViewPainter oldDelegate) =>
       color != oldDelegate.color ||
       model != oldDelegate.model ||
-      lighting != oldDelegate.lighting;
+      lighting != oldDelegate.lighting ||
+      hoodOpen != oldDelegate.hoodOpen;
 }

@@ -16,7 +16,7 @@ import 'package:dashcore/screens/settings_screen.dart';
 import 'package:dashcore/screens/store_screen.dart';
 import 'package:dashcore/screens/styles_screen.dart';
 import 'package:dashcore/screens/update_center_screen.dart';
-import 'package:dashcore/screens/workshop_screen.dart';
+import '../widget/workshop_diagnostics_panel.dart';
 import 'package:dashcore/widget/update_dialog.dart';
 import 'package:dashcore/widget/tutorial_overlay.dart';
 import 'package:dashcore/widget/home_screen/hidden_menu_overlay.dart'
@@ -425,7 +425,16 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
           }
         },
       ),
-      WorkshopScreen(onBack: () => _onNavigate(0)),
+      Scaffold(
+        appBar: AppBar(
+          title: const Text('DIAGNÓSTICO'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => _onNavigate(0),
+          ),
+        ),
+        body: const WorkshopDiagnosticsPanel(),
+      ),
       SettingsScreen(onBack: () => _onNavigate(0)),
       UpdateCenterScreen(onBack: () => _onNavigate(0)),
       DashLeagueScreen(onBack: () => _onNavigate(0)),
