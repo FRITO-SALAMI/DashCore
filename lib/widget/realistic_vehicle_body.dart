@@ -79,6 +79,7 @@ class _RealisticVehicleBodyState extends State<RealisticVehicleBody> {
 
   @override
   Widget build(BuildContext context) => CustomPaint(
+    child: const SizedBox.expand(),
     painter: _VehicleArtwork(
       _image?.image,
       _shader,

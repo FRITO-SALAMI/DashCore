@@ -76,6 +76,31 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
   testWidgets(
+    'Vehicle fills the loose vertical constraints used by Apex GT and Carbon Pulse',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 700,
+                height: 300,
+                child: Row(children: [Expanded(child: DashboardVehicle())]),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(tester.getSize(find.byType(RealisticVehicleBody)).height, 300);
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 300)),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+  testWidgets(
     'Realistic body keeps glass neutral while paint changes and lights fade',
     (tester) async {
       tester.view.physicalSize = const Size(1280, 800);
