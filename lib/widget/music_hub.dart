@@ -1,105 +1,34 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
-import '../providers/music_provider.dart';
+import '../core/app_colors.dart';
 
-typedef _MusicSnapshot = ({String title, bool playing, bool active});
-
-/// Lightweight, consistent media control for every dashboard.
-/// It intentionally renders only title and previous/play/next controls.
 class MusicHub extends StatelessWidget {
   const MusicHub({
     super.key,
-    this.accentColor = Colors.cyanAccent,
-    this.width = 280,
+    this.accentColor = AppColors.accent,
+    this.width,
     this.compact = false,
   });
 
   final Color accentColor;
-  final double width;
+  final double? width;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    return Selector<MusicProvider, _MusicSnapshot>(
-      selector: (_, music) => (
-        title: music.trackTitle,
-        playing: music.isPlaying,
-        active: music.hasActiveSession,
+    return Align(
+      alignment: Alignment.centerLeft,
+      widthFactor: 1,
+      heightFactor: 1,
+      child: Tooltip(
+        message: 'DashMix',
+        child: Icon(
+          Icons.music_note_rounded,
+          color: accentColor,
+          size: compact ? 20 : 24,
+          semanticLabel: 'DashMix',
+        ),
       ),
-      builder: (context, state, _) {
-        final music = context.read<MusicProvider>();
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final availableWidth = constraints.maxWidth.isFinite
-                ? constraints.maxWidth.clamp(0.0, width)
-                : width;
-            return SizedBox(
-              width: availableWidth,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: RepaintBoundary(
-                  child: Container(
-                    width: availableWidth < 160 ? 160 : availableWidth,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: compact ? 10 : 14,
-                      vertical: compact ? 7 : 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(compact ? 10 : 14),
-                      border: Border.all(
-                        color: accentColor.withValues(alpha: 0.65),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            state.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: state.active
-                                  ? Colors.white
-                                  : Colors.white54,
-                              fontSize: compact ? 10 : 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        _button(Icons.skip_previous_rounded, music.previous),
-                        _button(
-                          state.playing
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-                          music.playPause,
-                        ),
-                        _button(Icons.skip_next_rounded, music.next),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _button(IconData icon, VoidCallback onPressed) {
-    return IconButton(
-      visualDensity: VisualDensity.compact,
-      constraints: BoxConstraints.tightFor(
-        width: compact ? 36 : 44,
-        height: compact ? 36 : 44,
-      ),
-      padding: EdgeInsets.zero,
-      splashRadius: compact ? 15 : 18,
-      onPressed: onPressed,
-      icon: Icon(icon, color: accentColor, size: compact ? 23 : 28),
     );
   }
 }

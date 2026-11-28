@@ -1,14 +1,10 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 import '../providers/dash_settings_provider.dart';
 import '../providers/obd_provider.dart';
 import '../utils/app_localizations.dart';
-import 'vehicle_resource_download_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final VoidCallback onFinish;
@@ -21,7 +17,6 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  bool _isRequestingPermissions = false;
   bool _showCinematic = true;
 
   @override
@@ -30,95 +25,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     Future.delayed(const Duration(milliseconds: 2500), () {
       if (!mounted) return;
       setState(() => _showCinematic = false);
-      _checkInitialPermissions();
     });
   }
 
-  Future<void> _checkInitialPermissions() async {
-    final status = await Permission.location.status;
-    if (status.isGranted && _currentPage == 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_pageController.hasClients) {
-          _pageController.jumpToPage(1);
-        }
-      });
-    }
-  }
-
-  Future<void> _requestPermissions() async {
-    if (_isRequestingPermissions) return;
-
-    final continueRequest = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('UBICACIÓN Y DISPOSITIVO OBD2'),
-        content: const Text(
-          'DashCore utiliza tu ubicación precisa mientras conduces para calcular y mostrar velocidad, movimiento, recorrido y posición en el mapa. '
-          'También usa Bluetooth para encontrar y comunicarse con tu adaptador OBD2. Al iniciar sesión puede guardarse una ubicación aproximada una sola vez. Al aceptar la política se habilitan muestras OBD para mejorar rangos y alertas; nunca incluyen tu recorrido GPS y pueden desactivarse en Ajustes. '
-          'DashCore no vende estos datos ni los usa para publicidad. Puedes revisar los permisos y desactivar “Mantener app activa” desde Ajustes.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('AHORA NO'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('CONTINUAR'),
-          ),
-        ],
-      ),
-    );
-    if (continueRequest != true || !mounted) return;
-    setState(() => _isRequestingPermissions = true);
-
-    final deviceInfo = DeviceInfoPlugin();
-    final androidInfo = await deviceInfo.androidInfo;
-    final sdk = androidInfo.version.sdkInt;
-
-    final List<Permission> permissionsToRequest = [
-      Permission.notification,
-      Permission.location,
-      Permission.bluetooth,
-    ];
-
-    if (sdk >= 31) {
-      permissionsToRequest.addAll([
-        Permission.bluetoothScan,
-        Permission.bluetoothConnect,
-      ]);
-      permissionsToRequest.add(Permission.locationWhenInUse);
-    }
-
-    final Map<Permission, PermissionStatus> statuses =
-        await permissionsToRequest.request();
-
-    setState(() => _isRequestingPermissions = false);
-
-    final bool locationGranted =
-        statuses[Permission.location]?.isGranted == true ||
-        statuses[Permission.locationWhenInUse]?.isGranted == true;
-    final bool bluetoothGranted = sdk >= 31
-        ? (statuses[Permission.bluetoothScan]?.isGranted == true &&
-              statuses[Permission.bluetoothConnect]?.isGranted == true)
-        : (statuses[Permission.bluetooth]?.isGranted == true ||
-              statuses[Permission.location]?.isGranted == true);
-
-    if (locationGranted || bluetoothGranted) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_pageController.hasClients) {
-          _pageController.nextPage(
-            duration: const Duration(milliseconds: 500),
-            curve: Curves.easeInOut,
-          );
-        }
-      });
-    }
-  }
-
   void _nextPage() {
-    if (_currentPage == 4) {
+    if (_currentPage == 3) {
       _finishOnboarding();
     } else {
       _pageController.nextPage(
@@ -131,6 +42,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _finishOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarding_done', true);
+    if (!mounted) return;
     final settings = context.read<DashSettingsProvider>();
     settings.setTutorialActive(
       true,
@@ -139,17 +51,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     widget.onFinish();
   }
 
-  Future<void> _resetApp() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('CACHE LIMPIADA - REINICIANDO...')),
-      );
-      Future.delayed(const Duration(seconds: 1), () {
-        SystemNavigator.pop();
-      });
-    }
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -175,7 +80,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             physics: const NeverScrollableScrollPhysics(),
             onPageChanged: (idx) => setState(() => _currentPage = idx),
             children: [
-              _buildPermissionsPage(isSpanish, themeColor),
               _buildWelcomePage(isSpanish, themeColor),
               _buildModeSelectionPage(loc, themeColor, settings, obdProvider),
               _buildVehicleSelectionPage(loc, themeColor, settings),
@@ -189,7 +93,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             right: 0,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (i) => _buildDot(i, themeColor)),
+              children: List.generate(4, (i) => _buildDot(i, themeColor)),
             ),
           ),
         ],
@@ -206,64 +110,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         color: _currentPage == index ? color : Colors.white24,
         borderRadius: BorderRadius.circular(4),
       ),
-    );
-  }
-
-  Widget _buildPermissionsPage(bool isSpanish, Color themeColor) {
-    return Stack(
-      children: [
-        Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.location_on_rounded,
-                color: Colors.white,
-                size: 80,
-              ),
-              const SizedBox(height: 40),
-              Text(
-                isSpanish
-                    ? 'ACEPTA LOS PERMISOS NECESARIOS\nPARA CONTINUAR'
-                    : 'ACCEPT THE NECESSARY PERMISSIONS\nTO CONTINUE',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1,
-                ),
-              ),
-              const SizedBox(height: 60),
-              _PremiumButton(
-                label: isSpanish ? 'DAR PERMISOS' : 'GRANT PERMISSIONS',
-                onTap: _requestPermissions,
-              ),
-              const SizedBox(height: 20),
-              TextButton(
-                onPressed: _resetApp,
-                child: Text(
-                  isSpanish
-                      ? 'RESTABLECER APP / BORRAR CACHE'
-                      : 'RESET APP / CLEAR CACHE',
-                  style: const TextStyle(
-                    color: Colors.white12,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Hand guide pointing to system dialog area
-        Positioned(
-          bottom: 100,
-          left: 0,
-          right: 0,
-          child: _AnimatedHandGuide(offset: const Offset(0, 50)),
-        ),
-      ],
     );
   }
 
@@ -405,18 +251,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 final v = settings.availableVehicles[index];
                 final isSelected = settings.selectedVehicle?.id == v.id;
                 return GestureDetector(
-                  onTap: () async {
-                    if (v.isDownloaded) {
-                      settings.selectVehicle(v);
-                      return;
-                    }
-                    await Navigator.of(context).push<bool>(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            VehicleResourceDownloadScreen(vehicle: v),
-                      ),
-                    );
-                  },
+                  onTap: () => settings.selectVehicle(v),
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(16),
@@ -453,19 +288,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         const SizedBox(height: 40),
         _PremiumButton(
           label: isSpanish ? 'SIGUIENTE' : 'NEXT',
-          onTap: () {
-            if (settings.selectedVehicle?.isDownloaded == true) {
-              _nextPage();
-              return;
-            }
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'SELECCIONA Y DESCARGA UN VEHÍCULO PARA CONTINUAR',
-                ),
-              ),
-            );
-          },
+          onTap: _nextPage,
         ),
         const SizedBox(height: 10),
         TextButton.icon(
@@ -695,53 +518,6 @@ class _BootGaugePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _BootGaugePainter oldDelegate) =>
       oldDelegate.progress != progress;
-}
-
-class _AnimatedHandGuide extends StatefulWidget {
-  final Offset offset;
-  const _AnimatedHandGuide({required this.offset});
-  @override
-  State<_AnimatedHandGuide> createState() => _AnimatedHandGuideState();
-}
-
-class _AnimatedHandGuideState extends State<_AnimatedHandGuide>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<Offset> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    )..repeat(reverse: true);
-    _animation = Tween<Offset>(
-      begin: Offset.zero,
-      end: widget.offset,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) => Transform.translate(
-        offset: _animation.value,
-        child: Image.asset(
-          'assets/tutorial/hand_pointer.png',
-          width: 60,
-          height: 60,
-        ),
-      ),
-    );
-  }
 }
 
 class _PremiumBackground extends StatefulWidget {

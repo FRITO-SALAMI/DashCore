@@ -25,7 +25,7 @@ const double _kMapLatSouth = -71.4;
 const int _kTargetFps = 12;
 const double _kDotStep = _kMapViewBoxWidth / 90;
 const double _kActiveNodeChance = 0.985;
-const Duration _kGlobeRotationPeriod = Duration(seconds: 90);
+const Duration _kGlobeRotationPeriod = Duration(seconds: 56);
 const double _kGlobeTilt = 0.32;
 const double _dominicanRotation = .5 - 592.92 / _kMapViewBoxWidth;
 
@@ -130,7 +130,6 @@ class _OrbitWorldDashboardState extends State<OrbitWorldDashboard>
   void didChangeDependencies() {
     super.didChangeDependencies();
     final reduce =
-        context.watch<DashSettingsProvider>().reduceOrbitMotion ||
         MediaQuery.maybeDisableAnimationsOf(context) == true ||
         !TickerMode.of(context);
     if (reduce) {
@@ -178,30 +177,15 @@ class _OrbitWorldDashboardState extends State<OrbitWorldDashboard>
             ),
           Positioned.fill(
             child: RepaintBoundary(
-              child: lowResource
-                  ? CustomPaint(
-                      painter: _LivingStarsPainter(
-                        phase: .3,
-                        accent: accentColor,
-                        lowResource: true,
-                      ),
-                    )
-                  : AnimatedBuilder(
-                      animation: _throttled,
-                      builder: (context, _) => CustomPaint(
-                        painter: _LivingStarsPainter(
-                          phase: _throttled.value,
-                          accent: accentColor,
-                          lowResource: lowResource,
-                        ),
-                      ),
-                    ),
-            ),
-          ),
-          Positioned.fill(
-            child: RepaintBoundary(
-              child: CustomPaint(
-                painter: _NeonGridPainter(color: accentColor.withOpacity(0.04)),
+              child: AnimatedBuilder(
+                animation: _throttled,
+                builder: (context, _) => CustomPaint(
+                  painter: _LivingStarsPainter(
+                    phase: _throttled.value,
+                    accent: accentColor,
+                    lowResource: lowResource || settings.reduceOrbitMotion,
+                  ),
+                ),
               ),
             ),
           ),
@@ -214,7 +198,6 @@ class _OrbitWorldDashboardState extends State<OrbitWorldDashboard>
                 pulse: _throttled,
                 liveStat: widget.liveStat ?? _dominicanMarker,
                 landColor: settings.needleColor,
-                reducedMotion: settings.reduceOrbitMotion,
               ),
             ),
           ),
@@ -410,33 +393,17 @@ class _ThrottledListenable extends ChangeNotifier {
 
   double get value => _value;
 
+  void synchronize() {
+    if (_value == source.value) return;
+    _value = source.value;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     source.removeListener(_tick);
     super.dispose();
   }
-}
-
-class _NeonGridPainter extends CustomPainter {
-  final Color color;
-  _NeonGridPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 0.5;
-    for (double x = 0; x < size.width; x += 60) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (double y = 0; y < size.height; y += 60) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _NeonGridPainter oldDelegate) =>
-      oldDelegate.color != color;
 }
 
 class _LivingStarsPainter extends CustomPainter {
@@ -452,30 +419,64 @@ class _LivingStarsPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final random = math.Random(42017);
-    final count = lowResource ? 65 : 120;
+    final paint = Paint();
+    canvas.drawRect(
+      Offset.zero & size,
+      paint
+        ..shader = const RadialGradient(
+          center: Alignment(-.45, .2),
+          radius: .85,
+          colors: [Color(0x291D4B67), Color(0x130E304C), Colors.transparent],
+          stops: [0, .52, 1],
+        ).createShader(Offset.zero & size),
+    );
+    paint.shader = null;
+    final count = lowResource ? 88 : _stars.length;
     for (var i = 0; i < count; i++) {
-      final x = random.nextDouble() * size.width;
-      final y = random.nextDouble() * size.height;
-      final starPhase = random.nextDouble() * math.pi * 2;
-      final wave = (math.sin(phase * math.pi * 2 + starPhase) + 1) / 2;
-      final radius = .45 + random.nextDouble() * 1.15;
-      final color = i % 7 == 0 ? accent : const Color(0xFFDCEFFF);
-      canvas.drawCircle(
-        Offset(x, y),
-        radius,
-        Paint()..color = color.withOpacity(.18 + wave * .70),
-      );
-      if (!lowResource && i % 18 == 0) {
+      final star = _stars[i];
+      final point = Offset(star.x * size.width, star.y * size.height);
+      final bright = i % 17 == 0;
+      final wave = bright
+          ? (.5 + .5 * math.sin(phase * math.pi + star.y * 8))
+          : .5;
+      final color = switch (i % 9) {
+        0 => const Color(0xFFFFDABA),
+        1 => Color.lerp(const Color(0xFFBDE0FF), accent, .2)!,
+        _ => const Color(0xFFE8F1FF),
+      };
+      if (bright) {
         canvas.drawCircle(
-          Offset(x, y),
-          radius * 2.8,
-          Paint()
-            ..color = color.withOpacity(.10 + wave * .10)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+          point,
+          star.radius * 2.6,
+          paint..color = color.withValues(alpha: .04 + .07 * wave),
         );
       }
+      canvas.drawCircle(
+        point,
+        star.radius,
+        paint..color = color.withValues(alpha: star.alpha + .18 * wave),
+      );
     }
+  }
+
+  static final _stars = _makeStars();
+
+  static List<({double x, double y, double radius, double alpha})>
+  _makeStars() {
+    final random = math.Random(42017);
+    return List.generate(165, (i) {
+      final x = random.nextDouble();
+      final scatter = random.nextDouble();
+      final band = (.59 - .24 * x + (scatter - .5) * .49).clamp(0.0, 1.0);
+      final y = i % 3 == 0 ? band : scatter;
+      final magnitude = random.nextDouble();
+      return (
+        x: x,
+        y: y,
+        radius: i % 17 == 0 ? 1.15 : .32 + magnitude * .55,
+        alpha: .12 + magnitude * .39,
+      );
+    }, growable: false);
   }
 
   @override
@@ -939,7 +940,6 @@ class _GlobeWidget extends StatefulWidget {
   final _ThrottledListenable pulse;
   final GlobeLiveStat? liveStat;
   final Color landColor;
-  final bool reducedMotion;
 
   const _GlobeWidget({
     required this.accent,
@@ -947,7 +947,6 @@ class _GlobeWidget extends StatefulWidget {
     required this.pulse,
     required this.liveStat,
     required this.landColor,
-    required this.reducedMotion,
   });
 
   @override
@@ -970,7 +969,7 @@ class _GlobeWidgetState extends State<_GlobeWidget>
     );
     _rotationPaint = _ThrottledListenable(
       _rotationController,
-      widget.lowResource ? 30 : 60,
+      widget.lowResource ? 24 : 40,
     );
     _loadMap();
   }
@@ -981,27 +980,24 @@ class _GlobeWidgetState extends State<_GlobeWidget>
     _updateRotation();
   }
 
-  @override
-  void didUpdateWidget(covariant _GlobeWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.reducedMotion != widget.reducedMotion) _updateRotation();
-  }
-
   void _updateRotation() {
-    final reduce =
-        widget.reducedMotion ||
-        MediaQuery.maybeDisableAnimationsOf(context) == true;
+    final reduce = MediaQuery.maybeDisableAnimationsOf(context) == true;
     if (reduce || !TickerMode.of(context)) {
       _rotationController.stop();
-      if (reduce) _rotationController.value = _dominicanRotation;
-    } else if (!_rotationController.isAnimating) {
+      if (reduce) {
+        _rotationController.value = _dominicanRotation;
+        _rotationPaint.synchronize();
+      }
+    } else if (_ready && !_rotationController.isAnimating) {
       _rotationController.repeat();
     }
   }
 
   Future<void> _loadMap() async {
     await _WorldMapData.load(lowResource: widget.lowResource);
-    if (mounted) setState(() => _ready = true);
+    if (!mounted) return;
+    setState(() => _ready = true);
+    _updateRotation();
   }
 
   @override
@@ -1016,11 +1012,12 @@ class _GlobeWidgetState extends State<_GlobeWidget>
     return AnimatedBuilder(
       animation: _rotationPaint,
       builder: (context, _) => CustomPaint(
+        key: const ValueKey('orbit-world-planet'),
         painter: _GlobeDynamicPainter(
           accent: widget.accent,
           ready: _ready,
           lowResource: widget.lowResource,
-          rotationProgress: _rotationController.value,
+          rotationProgress: _rotationPaint.value,
           pulseT: widget.pulse.value,
           liveStat: widget.liveStat,
           landColor: widget.landColor,

@@ -1,8 +1,6 @@
 import '../display_units.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../providers/music_provider.dart';
 import '../rpm_warning_animation.dart';
 import '../music_hub.dart';
 import '../dashboard_background.dart';
@@ -138,97 +136,6 @@ class GlowRedDashboard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _GlowMusicHub extends StatelessWidget {
-  final Color color;
-  const _GlowMusicHub({required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    final music = context.watch<MusicProvider>();
-
-    return Container(
-      width: 280, // Less long
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.7),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3), width: 1),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.music_note_rounded, color: color, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  music.trackTitle,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  music.artistName.toUpperCase(),
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.4),
-                    fontSize: 8,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 5),
-          _GlowMusicButton(
-            icon: music.isPlaying
-                ? Icons.pause_rounded
-                : Icons.play_arrow_rounded,
-            onTap: music.playPause,
-            color: color,
-          ),
-          _GlowMusicButton(
-            icon: Icons.skip_next_rounded,
-            onTap: music.next,
-            color: color,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GlowMusicButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  final Color color;
-  final bool isLarge;
-
-  const _GlowMusicButton({
-    required this.icon,
-    required this.onTap,
-    required this.color,
-    this.isLarge = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: onTap,
-      iconSize: isLarge ? 28 : 22,
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(),
-      icon: Icon(icon, color: Colors.white),
     );
   }
 }

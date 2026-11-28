@@ -1,9 +1,7 @@
 import '../../../widget/display_units.dart';
 import '../../../widget/compatible_vehicle_model.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../../models/obd_data.dart';
-import '../../../providers/music_provider.dart';
 import '../../../widget/dashboard_background.dart';
 import '../../../widget/music_hub.dart';
 
@@ -484,108 +482,4 @@ class _AppsHub extends StatelessWidget {
       ],
     ),
   );
-}
-
-class _MusicHub extends StatelessWidget {
-  const _MusicHub();
-  @override
-  Widget build(BuildContext context) {
-    final music = context.watch<MusicProvider>();
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF121417),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF23262B)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF23262B),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.music_note,
-                  size: 18,
-                  color: Colors.white30,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      music.trackTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      music.artistName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white30,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(
-              value: music.progress.clamp(0.0, 1.0),
-              minHeight: 3,
-              backgroundColor: const Color(0xFF23262B),
-              valueColor: const AlwaysStoppedAnimation(Color(0xFF3DDC84)),
-            ),
-          ),
-          const Spacer(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.skip_previous, color: Colors.white),
-                onPressed: music.previous,
-              ),
-              const SizedBox(width: 18),
-              IconButton(
-                icon: Icon(
-                  music.isPlaying
-                      ? Icons.pause_circle_filled
-                      : Icons.play_circle_filled,
-                  size: 30,
-                  color: Colors.white,
-                ),
-                onPressed: music.playPause,
-              ),
-              const SizedBox(width: 18),
-              IconButton(
-                icon: const Icon(Icons.skip_next, color: Colors.white),
-                onPressed: music.next,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }

@@ -49,7 +49,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _showStyleConfig = false;
   String? _editingGaugeId;
-  VoidCallback? _settingsListener;
   ObdProvider? _obdProvider;
   ObdData _renderedData = const ObdData();
   Timer? _telemetryFrameTimer;
@@ -62,8 +61,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   (bool, bool, bool, ObdConnectionState) _modeOf(ObdProvider obd) =>
       (obd.isRealMode, obd.isGpsMode, obd.isDemoMode, obd.state);
-  bool _isShowingDownloadDialog = false;
-  String? _dismissedResourceVehicle;
 
   @override
   void initState() {
@@ -80,15 +77,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _telemetryFrameTimer?.cancel();
         _telemetryFrameTimer = null;
       }
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final dashSettings = context.read<DashSettingsProvider>();
-      _settingsListener = () {
-        if (mounted) _checkResources(dashSettings);
-      };
-      dashSettings.addListener(_settingsListener!);
-      _checkResources(dashSettings);
     });
   }
 
@@ -138,128 +126,11 @@ class _HomeScreenState extends State<HomeScreen> {
         current.odometer != old.odometer || current.gear != old.gear;
   }
 
-  void _checkResources(DashSettingsProvider settings) {
-    if (_isShowingDownloadDialog) return;
-    if (_dismissedResourceVehicle == settings.selectedVehicle?.id) return;
-    if (!{DashboardStyle.vehicle3D, DashboardStyle.teslaStyle,
-      DashboardStyle.teslaRoad, DashboardStyle.teslaModel,
-      DashboardStyle.freeDashboard}.contains(settings.selectedStyle)) return;
-
-    if (settings.selectedVehicle != null &&
-        !settings.selectedVehicle!.isDownloaded &&
-        settings.selectedVehicle!.modelUrl != null) {
-      _showDownloadDialog(context, settings);
-    }
-  }
-
-  void _showDownloadDialog(
-    BuildContext context,
-    DashSettingsProvider settings,
-  ) {
-    _isShowingDownloadDialog = true;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Consumer<DashSettingsProvider>(
-        builder: (context, provider, _) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1D24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: const Text(
-            'DESCARGAR RECURSOS',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: 18,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Es necesario descargar el modelo 3D y fondos para este vehículo.',
-                style: TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-              const SizedBox(height: 20),
-              if (provider.isDownloadingResources) ...[
-                LinearProgressIndicator(
-                  value: provider.downloadProgress,
-                  backgroundColor: Colors.white10,
-                  valueColor: const AlwaysStoppedAnimation(Color(0xFF00E5FF)),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  '${(provider.downloadProgress * 100).toInt()}%',
-                  style: const TextStyle(
-                    color: Color(0xFF00E5FF),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ] else
-                Text(
-                  provider.downloadSizeMessage,
-                  style: const TextStyle(color: Colors.white38, fontSize: 12),
-                ),
-            ],
-          ),
-          actions: [
-            if (!provider.isDownloadingResources)
-              TextButton(
-                onPressed: () {
-                  _isShowingDownloadDialog = false;
-                  _dismissedResourceVehicle = provider.selectedVehicle?.id;
-                  Navigator.pop(ctx);
-                },
-                child: const Text(
-                  'MÁS TARDE',
-                  style: TextStyle(color: Colors.white38),
-                ),
-              ),
-            ElevatedButton(
-              onPressed: provider.isDownloadingResources
-                  ? null
-                  : () async {
-                      if (await provider.downloadVehicleResources() &&
-                          mounted) {
-                        _isShowingDownloadDialog = false;
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Recursos descargados correctamente'),
-                          ),
-                        );
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00E5FF),
-                disabledBackgroundColor: Colors.white10,
-              ),
-              child: Text(
-                provider.isDownloadingResources
-                    ? 'DESCARGANDO...'
-                    : 'DESCARGAR AHORA',
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   void dispose() {
     _lifecycle.dispose();
     _telemetryFrameTimer?.cancel();
     _obdProvider?.removeListener(_onTelemetryChanged);
-    if (_settingsListener != null)
-      try {
-        context.read<DashSettingsProvider>().removeListener(_settingsListener!);
-      } catch (_) {}
     super.dispose();
   }
 
@@ -279,9 +150,8 @@ class _HomeScreenState extends State<HomeScreen> {
             Positioned.fill(
               child: TickerMode(
                 enabled: settings.isAppActive && _rendersDashboard &&
-                    !(settings.selectedStyle == DashboardStyle.orbitWorld
-                        ? settings.reduceOrbitMotion
-                        : settings.reduceMotion),
+                    (settings.selectedStyle == DashboardStyle.orbitWorld ||
+                        !settings.reduceMotion),
                 child: RepaintBoundary(
                   child: Padding(
                     padding: const EdgeInsets.all(12),

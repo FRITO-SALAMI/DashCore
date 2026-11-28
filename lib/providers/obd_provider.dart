@@ -170,9 +170,10 @@ class ObdProvider extends ChangeNotifier {
   int _visualLocationConsumers = 0;
   Position? get lastGpsPosition => _lastPosition;
 
-  Future<void> acquireVisualLocation() async {
+  Future<bool> acquireVisualLocation() async {
     _visualLocationConsumers++;
     await _initGlobalGpsTracking();
+    return _gpsSubscription != null;
   }
 
   void releaseVisualLocation() {

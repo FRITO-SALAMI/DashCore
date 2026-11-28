@@ -22,8 +22,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:dashcore/providers/dash_settings_provider.dart';
-import 'package:dashcore/providers/music_provider.dart';
 import 'package:dashcore/widget/gauges/night_drive_dashboard.dart';
+import 'package:dashcore/widget/gauges/orbit_world_dashboard.dart';
 import 'package:dashcore/models/obd_data.dart';
 import 'package:dashcore/services/glb_inspector.dart';
 import 'package:dashcore/services/gps_simulation.dart';
@@ -43,6 +43,10 @@ class PreviewSettings implements DashSettingsProvider {
   bool get isLowResourceDevice => false;
   @override
   String get speedUnitLabel => 'KM/H';
+  @override
+  DistanceUnit get distanceUnit => DistanceUnit.kilometers;
+  @override
+  String get vehicleColorHex => '#D5DDE9';
   @override
   double displaySpeed(num kmh) => kmh.toDouble();
   @override
@@ -70,6 +74,23 @@ class PreviewSettings implements DashSettingsProvider {
   String formatTime(int hour, int minute) => '8:45';
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _OrbitTestSettings extends PreviewSettings {
+  @override
+  bool get isLowResourceDevice => true;
+  @override
+  bool get reduceOrbitMotion => true;
+  @override
+  bool get isEditMode => false;
+  @override
+  bool get tempWarningEnabled => false;
+  @override
+  bool get speedWarningEnabled => false;
+  @override
+  String? get backgroundImage => null;
+  @override
+  Color get needleColor => const Color(0xFF91B7C8);
 }
 
 class _DisconnectedObd extends ChangeNotifier implements ObdProvider {
@@ -266,7 +287,7 @@ void main() {
       );
       await tester.pump();
       expect(find.text('13.8'), findsNWidgets(2));
-      expect(find.text('VISTA PREVIA'), findsNWidgets(2));
+      expect(find.text('08:45'), findsNWidgets(2));
       expect(tester.takeException(), isNull);
     },
   );
@@ -530,6 +551,66 @@ void main() {
   });
 
   testWidgets(
+    'Orbit rotates on a low-resource setup and honors reduced motion',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      const planet = ValueKey('orbit-world-planet');
+      final settings = _OrbitTestSettings();
+
+      Future<void> show({required bool reduced}) async {
+        await tester.pumpWidget(
+          ChangeNotifierProvider<DashSettingsProvider>.value(
+            value: settings,
+            child: MaterialApp(
+              home: MediaQuery(
+                data: MediaQueryData.fromView(
+                  tester.view,
+                ).copyWith(disableAnimations: reduced),
+                child: const Scaffold(
+                  body: OrbitWorldDashboard(
+                    speed: 44,
+                    rpm: 500,
+                    coolantTemp: 81,
+                    voltage: 13.8,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      double rotation() {
+        final dynamic painter = tester
+            .widget<CustomPaint>(find.byKey(planet))
+            .painter;
+        return painter.rotationProgress as double;
+      }
+
+      await tester.runAsync(
+        () => rootBundle.loadString('assets/world_map.svg'),
+      );
+      await show(reduced: false);
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 70)),
+      );
+      await tester.pump();
+      final initial = rotation();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 70)),
+      );
+      await tester.pump(const Duration(seconds: 3));
+      expect(rotation(), isNot(initial));
+      await show(reduced: true);
+      final stopped = rotation();
+      await tester.pump(const Duration(seconds: 3));
+      expect(rotation(), stopped);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets(
     'Night Drive reproduces the reference and keeps exact instrument values',
     (tester) async {
       const channel = MethodChannel('io.dashcore.app/launcher');
@@ -537,7 +618,6 @@ void main() {
         channel,
         (_) async => null,
       );
-      final music = MusicProvider();
       final settings = PreviewSettings();
       final key = GlobalKey();
       tester.view.physicalSize = const Size(1120, 500);
@@ -547,7 +627,6 @@ void main() {
       await tester.pumpWidget(
         MultiProvider(
           providers: [
-            ChangeNotifierProvider<MusicProvider>.value(value: music),
             ChangeNotifierProvider<DashSettingsProvider>.value(value: settings),
           ],
           child: MaterialApp(
@@ -577,7 +656,7 @@ void main() {
       await tester.pump();
       expect(tester.takeException(), isNull);
       expect(find.text('42'), findsOneWidget);
-      expect(find.text('2000'), findsNothing);
+      expect(find.text('2.0'), findsOneWidget);
       expect(find.text('13.8'), findsOneWidget);
       expect(find.text('Voltaje batería'), findsOneWidget);
       final speedText = tester.widget<Text>(find.text('42'));
@@ -598,9 +677,8 @@ void main() {
         ).writeAsBytes(bytes!.buffer.asUint8List());
         image.dispose();
       });
-      await tester.tap(find.byTooltip('Reproducir'));
-      await tester.pump();
-      expect(find.byTooltip('Pausar'), findsOneWidget);
+      expect(find.byTooltip('DashMix'), findsOneWidget);
+      expect(find.text('Teléfono'), findsNothing);
       tester.platformDispatcher.textScaleFactorTestValue = 1.3;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       for (final size in [
@@ -613,7 +691,6 @@ void main() {
         expect(tester.takeException(), isNull);
       }
       await tester.pumpWidget(const SizedBox.shrink());
-      music.dispose();
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         channel,
         null,

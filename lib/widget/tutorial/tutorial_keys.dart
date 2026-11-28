@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 class TutorialKeys {
   static final GlobalKey dashboardKey = GlobalKey();
-  static final GlobalKey menuButtonKey = GlobalKey();
   static final GlobalKey storeMenuEntryKey = GlobalKey();
   static final GlobalKey stylesMenuEntryKey = GlobalKey();
   static final GlobalKey editorMenuEntryKey = GlobalKey();

@@ -1,11 +1,8 @@
-import 'dart:math' as math;
 import 'dart:async';
-import '../widget/music_hub.dart';
 import '../widget/brightness_settings.dart';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -33,8 +30,6 @@ import 'package:dashcore/services/sync_service.dart';
 import 'package:dashcore/screens/auth_screen.dart';
 import 'package:dashcore/services/diagnostic_service.dart';
 import 'package:dashcore/services/performance_monitor_service.dart';
-import 'package:dashcore/providers/music_provider.dart';
-import 'package:dashcore/widget/tutorial/tutorial_keys.dart';
 import 'package:provider/provider.dart';
 
 class RootScreen extends StatefulWidget {
@@ -326,7 +321,6 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
       !context.read<ObdProvider>().accSleeping,
     );
     if (state == AppLifecycleState.resumed) {
-      context.read<MusicProvider>().refresh();
       unawaited(SyncService.instance.refreshActiveAnnouncement());
       unawaited(_checkForAppUpdate());
       unawaited(_loadWelcomeUsername());
@@ -399,8 +393,6 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                 'MODO 2DO PLANO · ACC OFF',
                 style: TextStyle(color: Colors.white54),
               ),
-              SizedBox(height: 20),
-              MusicHub(width: 340),
             ],
           ),
         ),
@@ -476,18 +468,6 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
                   _onNavigate(index);
                 },
                 onClose: _closeMenu,
-              ),
-
-            if (!_showMenu && !settings.isEditMode && _currentIndex == 0)
-              Positioned(
-                left: 4, top: 4,
-                child: SafeArea(child: IconButton.filledTonal(
-                  key: TutorialKeys.menuButtonKey,
-                  tooltip: 'Menú de DashCore',
-                  onPressed: _openMenu,
-                  icon: const Icon(Icons.menu_rounded, size: 22),
-                  style: IconButton.styleFrom(backgroundColor: const Color(0xDD111B28), foregroundColor: const Color(0xFF70DFFF)),
-                )),
               ),
 
             if (_isGreetingActive)

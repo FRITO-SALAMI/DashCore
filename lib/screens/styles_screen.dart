@@ -109,8 +109,7 @@ class _StylesScreenState extends State<StylesScreen> {
         imagePath = 'Dashcorepro.png';
         break;
       case DashboardStyle.dashcorevideo:
-        imagePath = 'dashcorevideo.png';
-        break;
+        return Image.asset('assets/videos/road_poster.jpg', fit: BoxFit.cover, cacheWidth: 320);
       case DashboardStyle.vehicle3D:
         imagePath = 'vehicle3d.jpeg';
         break;
@@ -151,6 +150,7 @@ class _StylesScreenState extends State<StylesScreen> {
             DashboardStyle.apexGt => 'APEX GT',
             DashboardStyle.carbonPulse => 'CARBON PULSE',
             DashboardStyle.roadAtlas => 'ROAD ATLAS',
+            DashboardStyle.dashcorevideo => 'CARRETERA NOCTURNA',
             DashboardStyle.freeDashboard => 'DRIVE CORE',
             DashboardStyle.purpleMaps => 'PURPLE DRIVE',
             DashboardStyle.vehicle3D => 'VEHICLE 3D',

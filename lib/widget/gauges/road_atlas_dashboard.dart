@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import '../dashboard_brand_mark.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
@@ -15,7 +16,7 @@ import '../../models/obd_data.dart';
 import '../../providers/dash_settings_provider.dart';
 import '../../providers/obd_provider.dart';
 import '../../services/usb_gnss_reader.dart';
-import '../compatible_vehicle_model.dart';
+import '../vehicle_top_view.dart';
 import '../display_units.dart';
 import '../vehicle_stage.dart';
 import 'local_position_view.dart';
@@ -39,7 +40,6 @@ class RoadAtlasDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = context.watch<DashSettingsProvider>();
     final vehicle = settings.selectedVehicle;
-    final thumb = catalogVehiclePreview(vehicle?.modelUrl ?? '');
     return ColoredBox(
       color: AppColors.background,
       child: LayoutBuilder(
@@ -63,23 +63,8 @@ class RoadAtlasDashboard extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Icon(
-                            Icons.route_rounded,
-                            color: AppColors.accent,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 7),
-                          const Expanded(
-                            child: Text(
-                              'ROAD ATLAS',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                letterSpacing: 1,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
+                          const DashboardBrandMark(width: 38),
+                          const Spacer(),
                           if (onGarage != null)
                             IconButton(
                               tooltip: 'Abrir garaje',
@@ -93,11 +78,13 @@ class RoadAtlasDashboard extends StatelessWidget {
                         ],
                       ),
                       Expanded(
-                        child: thumb != null && !preview
-                            ? Image.asset(
-                                thumb,
-                                fit: BoxFit.contain,
-                                cacheWidth: 420,
+                        child:
+                            vehicle != null &&
+                                !preview &&
+                                vehicle.artworkPath == null
+                            ? VehicleTopView(
+                                colorHex: settings.vehicleColorHex,
+                                vehicle: vehicle,
                               )
                             : VehiclePhoto(
                                 artwork: preview ? null : vehicle?.artworkPath,
@@ -125,6 +112,7 @@ class RoadAtlasDashboard extends StatelessWidget {
                                   height: 1,
                                   fontSize: compact ? 38 : 69,
                                   fontWeight: FontWeight.w800,
+                                  fontStyle: FontStyle.italic,
                                 ),
                               ),
                             ),
@@ -171,14 +159,14 @@ class RoadAtlasDashboard extends StatelessWidget {
                       children: [
                         _SideReading(
                           Icons.speed_rounded,
-                          'MOTOR',
+                          'RPM',
                           data.rpm == 0 && source == 'SIN CONEXIÓN'
                               ? '—'
                               : '${data.rpm} rpm',
                         ),
                         _SideReading(
                           Icons.thermostat_outlined,
-                          'MOTOR',
+                          'TEMPERATURA',
                           data.engineTemp == 0 && source == 'SIN CONEXIÓN'
                               ? '—'
                               : '${settings.convertTemp(data.engineTemp).round()} ${settings.tempUnit == TemperatureUnit.celsius ? '°C' : '°F'}',
@@ -245,9 +233,13 @@ class _RoadPanel extends StatelessWidget {
     clipBehavior: Clip.hardEdge,
     padding: padding,
     decoration: BoxDecoration(
-      color: AppColors.cardBg,
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF122731), Color(0xFF091219)],
+      ),
       borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: AppColors.border),
+      border: Border.all(color: const Color(0xFF254B5A)),
     ),
     child: child,
   );
@@ -290,6 +282,10 @@ class _RoadMapState extends State<_RoadMap> with WidgetsBindingObserver {
       'DashCore/2.0 (https://github.com/FRITO-SALAMI/DashCore)';
   final _trail = LocalTrail();
   final Map<(int, int, int), Future<Uint8List?>> _visibleTiles = {};
+  final _failedTiles = <(int, int, int)>{};
+  final _retriedTiles = <(int, int, int)>{};
+  Timer? _tileRetry;
+  bool _mapUnavailable = false;
   StreamSubscription<Position>? _positions;
   StreamSubscription<UsbEvent>? _usbEvents;
   UsbGnssReader? _usbReader;
@@ -332,7 +328,9 @@ class _RoadMapState extends State<_RoadMap> with WidgetsBindingObserver {
       return;
     }
     if (_positions != null || _usbReader != null) return;
-    _client = HttpClient()..connectionTimeout = const Duration(seconds: 6);
+    _client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 6)
+      ..maxConnectionsPerHost = 6;
     final usb = _usbSource;
     if (usb != null) {
       final reader = UsbGnssReader();
@@ -371,7 +369,18 @@ class _RoadMapState extends State<_RoadMap> with WidgetsBindingObserver {
             const Duration(seconds: 20)) {
       _onPosition(last);
     }
-    unawaited(obd.acquireVisualLocation());
+    final clientAtStart = _client;
+    unawaited(
+      obd.acquireVisualLocation().then((ready) {
+        if (!mounted || ready || !identical(_client, clientAtStart)) return;
+        _stop();
+        setState(() {
+          _enabled = false;
+          _sourceError =
+              'Activa la ubicación y permite su uso para ver el mapa.';
+        });
+      }),
+    );
   }
 
   void _usbFailed(UsbGnssReader reader, String message) {
@@ -486,7 +495,12 @@ class _RoadMapState extends State<_RoadMap> with WidgetsBindingObserver {
     _obd = null;
     _client?.close(force: true);
     _client = null;
+    _tileRetry?.cancel();
+    _tileRetry = null;
     _visibleTiles.clear();
+    _failedTiles.clear();
+    _retriedTiles.clear();
+    _mapUnavailable = false;
     _trail.clear();
     _position = null;
   }
@@ -496,6 +510,39 @@ class _RoadMapState extends State<_RoadMap> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _stop();
     super.dispose();
+  }
+
+  Future<Uint8List?> _loadTile((int, int, int) key, HttpClient client) async {
+    final bytes = await _tile(key, client);
+    if (!mounted ||
+        !identical(_client, client) ||
+        !_visibleTiles.containsKey(key)) {
+      return bytes;
+    }
+    if (bytes == null) {
+      _failedTiles.add(key);
+      if (!_retriedTiles.contains(key)) {
+        _tileRetry ??= Timer(const Duration(seconds: 4), () {
+          _tileRetry = null;
+          if (!mounted || !identical(_client, client)) return;
+          setState(() {
+            for (final failed in _failedTiles.difference(_retriedTiles)) {
+              _retriedTiles.add(failed);
+              _visibleTiles.remove(failed);
+            }
+          });
+        });
+      }
+    } else {
+      _failedTiles.remove(key);
+    }
+    final unavailable =
+        _failedTiles.isNotEmpty &&
+        _visibleTiles.keys.every(_failedTiles.contains);
+    if (unavailable != _mapUnavailable) {
+      setState(() => _mapUnavailable = unavailable);
+    }
+    return bytes;
   }
 
   Future<Uint8List?> _tile((int, int, int) key, HttpClient client) async {
@@ -531,7 +578,7 @@ class _RoadMapState extends State<_RoadMap> with WidgetsBindingObserver {
           response.statusCode == HttpStatus.notModified &&
           oldHeaders.isNotEmpty;
       if (!cached && response.statusCode != HttpStatus.ok) {
-        await response.drain<void>();
+        await response.drain<void>().timeout(const Duration(seconds: 3));
         return null;
       }
       final bytes = BytesBuilder(copy: false);
@@ -612,7 +659,10 @@ class _RoadMapState extends State<_RoadMap> with WidgetsBindingObserver {
     return Stack(
       fit: StackFit.expand,
       children: [
-        LocalPositionView(trail: _trail.positions),
+        if (position == null || _mapUnavailable)
+          LocalPositionView(trail: _trail.positions)
+        else
+          const ColoredBox(color: Color(0xFF162632)),
         if (position != null && client != null)
           LayoutBuilder(
             builder: (context, size) {
@@ -627,6 +677,8 @@ class _RoadMapState extends State<_RoadMap> with WidgetsBindingObserver {
                   count;
               final left = tileX - size.maxWidth / tileSize / 2;
               final top = tileY - size.maxHeight / tileSize / 2;
+              final dpr = MediaQuery.devicePixelRatioOf(context);
+              double snap(double value) => (value * dpr).roundToDouble() / dpr;
               final keys = <(int, int, int)>{};
               final widgets = <Widget>[];
               for (
@@ -642,35 +694,31 @@ class _RoadMapState extends State<_RoadMap> with WidgetsBindingObserver {
                 ) {
                   final key = (_zoom, x % count, y);
                   keys.add(key);
+                  final xPx = snap((x - left) * tileSize);
+                  final yPx = snap((y - top) * tileSize);
                   widgets.add(
                     Positioned(
                       key: ValueKey((x, y, _zoom)),
-                      left: (x - left) * tileSize,
-                      top: (y - top) * tileSize,
-                      width: tileSize + .2,
-                      height: tileSize + .2,
+                      left: xPx,
+                      top: yPx,
+                      width: snap((x + 1 - left) * tileSize) - xPx,
+                      height: snap((y + 1 - top) * tileSize) - yPx,
                       child: FutureBuilder<Uint8List?>(
                         future: _visibleTiles.putIfAbsent(
                           key,
-                          () => _tile(key, client),
+                          () => _loadTile(key, client),
                         ),
                         builder: (context, snapshot) {
                           final bytes = snapshot.data;
                           return bytes == null
                               ? const SizedBox.shrink()
-                              : ColorFiltered(
-                                  colorFilter: const ColorFilter.mode(
-                                    Color(0x99526982),
-                                    BlendMode.multiply,
-                                  ),
-                                  child: Image.memory(
-                                    bytes,
-                                    fit: BoxFit.fill,
-                                    cacheWidth: 256,
-                                    excludeFromSemantics: true,
-                                    errorBuilder: (_, _, _) =>
-                                        const SizedBox.shrink(),
-                                  ),
+                              : Image.memory(
+                                  bytes,
+                                  fit: BoxFit.fill,
+                                  cacheWidth: 256,
+                                  excludeFromSemantics: true,
+                                  errorBuilder: (_, _, _) =>
+                                      const SizedBox.shrink(),
                                 );
                         },
                       ),
@@ -679,6 +727,8 @@ class _RoadMapState extends State<_RoadMap> with WidgetsBindingObserver {
                 }
               }
               _visibleTiles.removeWhere((key, _) => !keys.contains(key));
+              _failedTiles.removeWhere((key) => !keys.contains(key));
+              _retriedTiles.removeWhere((key) => !keys.contains(key));
               return Stack(clipBehavior: Clip.hardEdge, children: widgets);
             },
           ),
@@ -749,6 +799,25 @@ class _RoadMapState extends State<_RoadMap> with WidgetsBindingObserver {
                 color: AppColors.accent,
                 shadows: [Shadow(color: Colors.black, blurRadius: 4)],
               ),
+            ),
+          ),
+        if (position != null && _mapUnavailable)
+          Positioned(
+            left: 8,
+            bottom: 8,
+            child: TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: AppColors.background,
+              ),
+              onPressed: () => setState(() {
+                _visibleTiles.removeWhere(
+                  (key, _) => _failedTiles.contains(key),
+                );
+                _failedTiles.clear();
+                _retriedTiles.clear();
+                _mapUnavailable = false;
+              }),
+              child: const Text('Mapa sin conexión · Reintentar'),
             ),
           ),
         if (_enabled)

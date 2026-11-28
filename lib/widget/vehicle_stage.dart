@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/vehicle_model.dart';
 import '../providers/dash_settings_provider.dart';
-import 'compatible_vehicle_model.dart';
+import 'vehicle_top_view.dart';
 
-/// The same stage follows the selected vehicle; a photograph never replaces its GLB.
+/// Shows the vehicle silhouette with an optional registered photo.
 class VehicleStage extends StatefulWidget {
   const VehicleStage({
     super.key,
@@ -36,7 +36,7 @@ class _VehicleStageState extends State<VehicleStage> {
   @override
   Widget build(BuildContext context) {
     final vehicle = widget.vehicle;
-    final hasModel = widget.modelPath.isNotEmpty;
+    final hasVehicle = vehicle != null || widget.modelPath.isNotEmpty;
     final artwork = vehicle?.artworkPath;
     return Stack(
       fit: StackFit.expand,
@@ -71,13 +71,16 @@ class _VehicleStageState extends State<VehicleStage> {
         ),
         Padding(
           padding: const EdgeInsets.only(top: 24, bottom: 30),
-          child: hasModel && !_photo
-              ? CompatibleVehicleModel(
-                  src: widget.modelPath,
-                  autoRotate: false,
-                  cameraControls: true,
-                  cameraOrbit: '35deg 78deg 3.75m',
-                  defaultZoom: 1,
+          child: hasVehicle && (!_photo || artwork == null)
+              ? VehicleTopView(
+                  colorHex: context.select(
+                    (DashSettingsProvider? settings) =>
+                        settings?.vehicleColorHex ??
+                        vehicle?.paintColorHex ??
+                        '#D5DDE9',
+                  ),
+                  vehicle: vehicle,
+                  source: widget.modelPath,
                 )
               : VehiclePhoto(
                   artwork: artwork,
@@ -110,7 +113,7 @@ class _VehicleStageState extends State<VehicleStage> {
             label: const Text('MI VEHÍCULO', style: TextStyle(fontSize: 10)),
           ),
         ),
-        if (hasModel && artwork != null)
+        if (hasVehicle && artwork != null)
           Positioned(
             bottom: 0,
             right: 4,
@@ -121,7 +124,7 @@ class _VehicleStageState extends State<VehicleStage> {
                 size: 15,
               ),
               label: Text(
-                _photo ? 'VER 3D' : 'VER FOTO',
+                _photo ? 'VISTA SUPERIOR' : 'VER FOTO',
                 style: const TextStyle(fontSize: 10),
               ),
             ),

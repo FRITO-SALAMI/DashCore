@@ -134,7 +134,7 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                           Positioned.fill(
                             child: Padding(
                               padding: const EdgeInsets.fromLTRB(20, 24, 20, 82),
-                              child: VehicleTopView(colorHex: settings.vehicleColorHex),
+                              child: VehicleTopView(colorHex: settings.vehicleColorHex, vehicle: settings.selectedVehicle),
                             ),
                           )
                         else CompatibleVehicleModel(

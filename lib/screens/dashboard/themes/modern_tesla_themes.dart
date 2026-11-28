@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../widget/music_hub.dart';
 import '../../../models/obd_data.dart';
-import '../../../providers/music_provider.dart';
 import '../../../providers/dash_settings_provider.dart';
 import 'package:dashcore/widget/dashboard_background.dart';
 
@@ -433,109 +432,6 @@ class _TeslaStatState extends State<_TeslaStat>
           ),
         );
       },
-    );
-  }
-}
-
-class _ModernMusicHub extends StatelessWidget {
-  final Color accentColor;
-  final bool isLight;
-  final double maxWidth;
-
-  const _ModernMusicHub({
-    required this.accentColor,
-    this.isLight = false,
-    this.maxWidth = 280,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final music = context.watch<MusicProvider>();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isLight
-            ? Colors.white.withOpacity(0.95)
-            : Colors.black.withOpacity(0.7),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isLight ? Colors.black12 : Colors.white10),
-      ),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.music_note,
-              color: isLight ? Colors.black : accentColor,
-              size: 18,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    music.trackTitle,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: isLight ? Colors.black : Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                  Text(
-                    music.artistName,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: (isLight ? Colors.black : Colors.white)
-                          .withOpacity(0.4),
-                      fontSize: 9,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              onPressed: music.previous,
-              iconSize: 18,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              icon: Icon(
-                Icons.skip_previous_rounded,
-                color: isLight ? Colors.black : Colors.white,
-              ),
-            ),
-            const SizedBox(width: 5),
-            IconButton(
-              onPressed: music.playPause,
-              iconSize: 22,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              icon: Icon(
-                music.isPlaying
-                    ? Icons.pause_rounded
-                    : Icons.play_arrow_rounded,
-                color: isLight ? Colors.black : Colors.white,
-              ),
-            ),
-            const SizedBox(width: 5),
-            IconButton(
-              onPressed: music.next,
-              iconSize: 18,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              icon: Icon(
-                Icons.skip_next_rounded,
-                color: isLight ? Colors.black : Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

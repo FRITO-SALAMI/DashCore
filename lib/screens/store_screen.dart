@@ -347,8 +347,7 @@ class _StoreScreenState extends State<StoreScreen> {
         imagePath = 'vehicle3d.jpeg';
         break;
       case DashboardStyle.dashcorevideo:
-        imagePath = 'dashcorevideo.png';
-        break;
+        return Image.asset('assets/videos/road_poster.jpg', fit: BoxFit.cover, cacheWidth: 320);
       case DashboardStyle.raceCluster:
         imagePath = 'raceclusterpreview.png';
         break;
@@ -488,8 +487,8 @@ class _StoreScreenState extends State<StoreScreen> {
       },
       {
         'style': DashboardStyle.dashcorevideo,
-        'title': 'DASHCOREVIDEO',
-        'desc': 'Video Dashboard',
+        'title': 'CARRETERA NOCTURNA',
+        'desc': 'Video local en bucle',
         'cat': 'premium',
       },
     ];

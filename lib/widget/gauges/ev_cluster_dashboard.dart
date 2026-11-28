@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/dash_settings_provider.dart';
-import '../../providers/music_provider.dart';
 import '../rpm_warning_animation.dart';
 import '../dashboard_background.dart';
 import '../music_hub.dart';
@@ -258,96 +257,6 @@ class _EvClusterThemeState extends State<EvClusterTheme>
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _MusicHubSmall extends StatelessWidget {
-  final Color accentColor;
-  const _MusicHubSmall({required this.accentColor});
-  @override
-  Widget build(BuildContext context) {
-    final music = context.watch<MusicProvider>();
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 24,
-        vertical: 16,
-      ), // Increased
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: accentColor.withOpacity(0.2), width: 1.5),
-        boxShadow: [
-          BoxShadow(color: accentColor.withOpacity(0.1), blurRadius: 20),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            onPressed: music.previous,
-            icon: const Icon(
-              Icons.skip_previous_rounded,
-              color: Colors.white70,
-              size: 24,
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-          const SizedBox(width: 12),
-          IconButton(
-            onPressed: music.playPause,
-            icon: Icon(
-              music.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-              color: Colors.white,
-              size: 32,
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-          const SizedBox(width: 12),
-          IconButton(
-            onPressed: music.next,
-            icon: const Icon(
-              Icons.skip_next_rounded,
-              color: Colors.white70,
-              size: 24,
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-          const SizedBox(width: 20),
-          const VerticalDivider(color: Colors.white10, indent: 5, endIndent: 5),
-          const SizedBox(width: 20),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'SYSTEM AUDIO',
-                style: TextStyle(
-                  color: Colors.white24,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 180),
-                child: Text(
-                  music.trackTitle.isEmpty ? 'DashCore Pro' : music.trackTitle,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

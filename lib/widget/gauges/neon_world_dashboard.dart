@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:provider/provider.dart';
 import '../music_hub.dart';
-import '../../providers/music_provider.dart';
 import '../../providers/dash_settings_provider.dart';
 import '../dashboard_background.dart';
 
@@ -81,7 +80,6 @@ class _NeonWorldDashboardState extends State<NeonWorldDashboard>
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<DashSettingsProvider>();
-    final music = context.watch<MusicProvider>();
 
     final accentColor = settings.accentColor;
     final mapColor = accentColor;
@@ -773,6 +771,8 @@ class _TempGaugeState extends State<_TempGauge> with SingleTickerProviderStateMi
                       style: TextStyle(
                           color: widget.isWarning ? Colors.redAccent : Colors.white,
                           fontSize: 54,
+                          fontStyle: FontStyle.italic,
+                          fontFeatures: const [ui.FontFeature.tabularFigures()],
                           fontWeight: FontWeight.w900,
                           height: 1)),
                   Text('°C', style: TextStyle(color: displayColor, fontSize: 22, fontWeight: FontWeight.bold)),
@@ -794,113 +794,7 @@ class _TempGaugeState extends State<_TempGauge> with SingleTickerProviderStateMi
 }
 
 // ============================================================
-// MUSIC HUB
-// ============================================================
-class _SmallMusicHub extends StatelessWidget {
-  final MusicProvider music;
-  final Color color;
-  const _SmallMusicHub({required this.music, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 240,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A0212).withOpacity(0.8),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.2), width: 1.5),
-        boxShadow: [BoxShadow(color: color.withOpacity(0.1), blurRadius: 15)],
-      ),
-      child: Row(
-        children: [
-          _MusicDisk(isPlaying: music.isPlaying, color: color),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  music.trackTitle.toUpperCase(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1),
-                ),
-                Text(
-                  music.artistName.toUpperCase(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 9, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    _MusicBtn(icon: Icons.skip_previous_rounded, onTap: music.previous),
-                    const SizedBox(width: 10),
-                    _MusicBtn(
-                      icon: music.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                      onTap: music.playPause,
-                      isMain: true,
-                    ),
-                    const SizedBox(width: 10),
-                    _MusicBtn(icon: Icons.skip_next_rounded, onTap: music.next),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MusicDisk extends StatelessWidget {
-  final bool isPlaying;
-  final Color color;
-  const _MusicDisk({required this.isPlaying, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color.withOpacity(0.1),
-        border: Border.all(color: color.withOpacity(0.3), width: 2),
-      ),
-      child: Center(child: Icon(Icons.music_note_rounded, color: color, size: 24)),
-    );
-  }
-}
-
-class _MusicBtn extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool isMain;
-  const _MusicBtn({required this.icon, required this.onTap, this.isMain = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.all(isMain ? 6 : 4),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: isMain ? Colors.white.withOpacity(0.1) : Colors.transparent,
-        ),
-        child: Icon(icon, color: Colors.white, size: isMain ? 22 : 18),
-      ),
-    );
-  }
-}
-
-// ============================================================
-// VOLTAGE DISPLAY
+// VOLTAGE
 // ============================================================
 class _VoltageDisplay extends StatelessWidget {
   final double voltage;
@@ -915,7 +809,7 @@ class _VoltageDisplay extends StatelessWidget {
         Icon(Icons.bolt_rounded, color: color.withOpacity(0.7), size: 24),
         const SizedBox(width: 4),
         Text(voltage.toStringAsFixed(1),
-            style: const TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.w900, height: 1)),
+            style: const TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, fontFeatures: [ui.FontFeature.tabularFigures()], height: 1)),
         const SizedBox(width: 4),
         Text('V', style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
       ],
@@ -1007,12 +901,15 @@ class _NeonSpeedometerState extends State<_NeonSpeedometer> with SingleTickerPro
                     Text('${widget.speed}',
                         style: TextStyle(
                             color: widget.isWarning ? Colors.redAccent : Colors.white,
-                            fontSize: widget.isWarning ? 94 : 84,
+                            fontSize: widget.isWarning ? 86 : 78,
+                            fontStyle: FontStyle.italic,
+                            fontFeatures: const [ui.FontFeature.tabularFigures()],
+                            shadows: const [Shadow(color: Color(0xFF071019), blurRadius: 12)],
                             fontWeight: FontWeight.w900,
                             height: 1)),
                     SpeedUnitLabel(
                         style: TextStyle(
-                            color: displayColor.withOpacity(0.5),
+                            color: displayColor.withValues(alpha: .86),
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 4)),

@@ -17,7 +17,7 @@ DIAGNÓSTICO
 La medición de rendimiento es opcional y local. Solo se envía un informe técnico cuando tú lo solicitas desde Ajustes. Puedes revisar el mensaje antes de enviarlo.
 
 PERMISOS
-Bluetooth permite conectar el adaptador OBD2. La ubicación se solicita al activar una función GPS. Fotos y archivos permiten seleccionar imágenes y recursos. Mantener app activa es opcional y utiliza un servicio visible durante la sesión OBD.
+Android solicita ubicación al activar una función GPS, como velocidad, rumbo o mapa. Bluetooth se solicita al buscar o conectar un adaptador OBD2. En radios Android 11 o anteriores, el sistema también puede requerir ubicación para detectar adaptadores. Fotos y archivos se eligen mediante el selector del sistema. Mantener app activa es opcional y utiliza un servicio visible durante la sesión OBD.
 
 CONTROL Y ELIMINACIÓN
 Puedes revocar permisos desde Android y eliminar tu cuenta desde Ajustes. La eliminación afecta solo a tus datos personales, vehículos propios, fotos y avatar; no borra vehículos, estilos ni recursos compartidos de DashCore.

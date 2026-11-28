@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../providers/dash_settings_provider.dart';
+import 'vehicle_top_view.dart';
 import '../services/glb_inspector.dart';
 
 enum Loading { eager, lazy }
@@ -262,6 +263,7 @@ class _CompatibleVehicleModelState extends State<CompatibleVehicleModel> {
   Widget build(BuildContext context) {
     final settings = context.select(
       (DashSettingsProvider settings) => (
+        vehicle: settings.selectedVehicle,
         artwork: settings.selectedVehicle?.artworkPath,
         rearArtwork: settings.selectedVehicle?.rearArtworkPath,
         catalogUrl: settings.selectedVehicle?.modelUrl,
@@ -273,15 +275,21 @@ class _CompatibleVehicleModelState extends State<CompatibleVehicleModel> {
       ),
     );
     final rearArtwork = widget.rearView ? settings.rearArtwork : null;
+    if (widget.preferLightPreview) {
+      if (rearArtwork != null && rearArtwork.isNotEmpty) {
+        return _VehicleLightView(artwork: rearArtwork, preview: null);
+      }
+      return VehicleTopView(
+        colorHex: settings.color,
+        vehicle: settings.vehicle,
+        source: widget.src,
+      );
+    }
     final artwork = rearArtwork ?? settings.artwork;
     final preview =
         catalogVehiclePreview(widget.src) ??
         catalogVehiclePreview(settings.catalogUrl ?? '');
-    if (widget.src.isEmpty || (rearArtwork != null && !_allowHeavy) ||
-        (widget.preferLightPreview &&
-            settings.lowResource &&
-            !_allowHeavy &&
-            (artwork != null || preview != null))) {
+    if (widget.src.isEmpty || (rearArtwork != null && !_allowHeavy)) {
       return _VehicleLightView(
         artwork: artwork,
         preview: preview,

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui' show FontFeature;
 import 'package:flutter/material.dart';
+import '../dashboard_brand_mark.dart';
 import '../dashboard_background.dart';
 import '../tutorial/tutorial_keys.dart';
 import '../vehicle_stage.dart';
@@ -155,34 +156,7 @@ class InstrumentClusterV2 extends StatelessWidget {
     children: [
       Container(width: 4, height: 24, color: color),
       const SizedBox(width: 12),
-      const Text(
-        'DASHCORE',
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 3,
-          color: Color(0xFFE8EDF4),
-        ),
-      ),
-      const SizedBox(width: 9),
-      Text(
-        '2.0',
-        style: TextStyle(
-          fontSize: 11,
-          color: color,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      const Spacer(),
-      Text(
-        _name,
-        style: const TextStyle(
-          fontSize: 12,
-          letterSpacing: 2,
-          color: Color(0xFF92A2B5),
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      const DashboardBrandMark(width: 38),
     ],
   );
 

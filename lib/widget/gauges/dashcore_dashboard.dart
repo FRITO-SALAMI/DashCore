@@ -2,13 +2,13 @@ import '../display_units.dart';
 import '../compatible_vehicle_model.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../dashboard_brand_mark.dart';
 import 'package:provider/provider.dart';
 import '../../models/gadget_config.dart';
 import '../editable_gadget_wrapper.dart';
 import '../../painters/rpm_gauge_painter.dart';
 import '../../painters/speed_ring_gauge_painter.dart';
 import '../../providers/dash_settings_provider.dart';
-import '../../providers/music_provider.dart';
 import '../rpm_warning_animation.dart';
 import '../dashboard_background.dart';
 import '../music_hub.dart';
@@ -81,7 +81,6 @@ class _DashcoreDashboardState extends State<DashcoreDashboard> {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<DashSettingsProvider>();
-    final music = context.read<MusicProvider>();
     final accentColor = settings.accentColor;
 
     return Container(
@@ -121,7 +120,7 @@ class _DashcoreDashboardState extends State<DashcoreDashboard> {
                         child: _buildGadgetContent(
                           config.id,
                           accentColor,
-                          music,
+
                           settings,
                         ),
                       ),
@@ -137,31 +136,29 @@ class _DashcoreDashboardState extends State<DashcoreDashboard> {
   }
 
   Widget _buildTopBar(Color color) => Positioned(
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-      child: Center(
-        child: Text(
-          'DASHCORE PRO',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 8,
-            shadows: [Shadow(color: color.withOpacity(0.4), blurRadius: 15)],
+    top: 4,
+    left: 14,
+    right: 14,
+    height: 46,
+    child: Row(
+      children: [
+        const DashboardBrandMark(width: 46),
+        const SizedBox(width: 10),
+        Expanded(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [color.withValues(alpha: .8), Colors.transparent]),
+            ),
+            child: const SizedBox(height: 1),
           ),
         ),
-      ),
+      ],
     ),
   );
 
   Widget _buildGadgetContent(
     String id,
     Color color,
-    MusicProvider music,
     DashSettingsProvider settings,
   ) {
     switch (id) {

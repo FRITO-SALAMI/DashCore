@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../dashboard_brand_mark.dart';
 import 'package:provider/provider.dart';
 import '../../providers/obd_provider.dart';
 import '../../providers/dash_settings_provider.dart';
@@ -586,15 +587,7 @@ class _InfoHeader extends StatelessWidget {
               ),
             ],
           ),
-          const Text(
-            'DASHCORE',
-            style: TextStyle(
-              color: RacingHudDashboard._white,
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 2.5,
-            ),
-          ),
+          const DashboardBrandMark(width: 36),
         ],
       ),
     );

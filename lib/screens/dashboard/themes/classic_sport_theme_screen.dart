@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../models/obd_data.dart';
 import '../../../providers/dash_settings_provider.dart';
-import '../../../providers/music_provider.dart';
 import '../../../widget/music_hub.dart';
 
 class ClassicSportThemeScreen extends StatefulWidget {
@@ -221,70 +220,6 @@ class _ClassicSportThemeScreenState extends State<ClassicSportThemeScreen> {
                     },
                   ),
                 ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NowPlayingBar extends StatelessWidget {
-  const _NowPlayingBar({required this.accentColor});
-  final Color accentColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final music = context.watch<MusicProvider>();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.skip_previous, color: Colors.white70, size: 16),
-                onPressed: music.previous,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-              const SizedBox(width: 15),
-              Text(
-                music.trackTitle,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 15),
-              IconButton(
-                icon: Icon(music.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white70, size: 16),
-                onPressed: music.playPause,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-              const SizedBox(width: 15),
-              IconButton(
-                icon: const Icon(Icons.skip_next, color: Colors.white70, size: 16),
-                onPressed: music.next,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: SizedBox(
-              width: 200,
-              height: 2,
-              child: LinearProgressIndicator(
-                value: music.progress,
-                backgroundColor: Colors.white10,
-                valueColor: AlwaysStoppedAnimation(accentColor.withOpacity(0.8)),
               ),
             ),
           ),

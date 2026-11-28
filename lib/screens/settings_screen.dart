@@ -19,7 +19,6 @@ import 'package:path_provider/path_provider.dart';
 import '../providers/dash_settings_provider.dart';
 import '../core/app_colors.dart';
 import '../providers/obd_provider.dart';
-import '../providers/music_provider.dart';
 import '../utils/app_localizations.dart';
 import '../widget/tutorial/tutorial_keys.dart';
 import '../widget/animated_startup_splash.dart';
@@ -787,14 +786,6 @@ Arquitectura: $architectureStr
                   ),
                 ),
                 const SizedBox(height: 12),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.music_note_outlined, color: AppColors.accent),
-                  title: Text(isSpanish ? 'Controles de música' : 'Music controls'),
-                  subtitle: Text(isSpanish ? 'Permitir que DashCore vea la canción en reproducción' :
-                    'Allow DashCore to see the currently playing track'),
-                  onTap: () => context.read<MusicProvider>().requestPermissions(),
-                ),
                 const _IgnitionSettingsTile(),
                 _SectionHeader(
                   title: isSpanish ? 'RENDIMIENTO' : 'PERFORMANCE',
@@ -804,7 +795,7 @@ Arquitectura: $architectureStr
                   subtitle: const Text(
                     'Reduce animaciones, vídeo, giro 3D y frecuencia visual',
                   ),
-                  value: settings.reduceMotion,
+                  value: settings.isPowerSavingMode,
                   onChanged: (v) {
                     settings.togglePowerSavingMode(v);
                     if (!v &&

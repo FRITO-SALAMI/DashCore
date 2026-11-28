@@ -14,7 +14,6 @@ import 'services/sync_service.dart';
 import 'providers/obd_provider.dart';
 import 'providers/bluetooth_provider.dart';
 import 'providers/dash_settings_provider.dart';
-import 'providers/music_provider.dart';
 import 'core/app_themes.dart';
 import 'screens/root_screen.dart';
 import 'widget/reconnection_banner.dart';
@@ -59,7 +58,6 @@ void main() {
         ChangeNotifierProvider<DashSettingsProvider>(
           create: (_) => DashSettingsProvider(),
         ),
-        ChangeNotifierProvider<MusicProvider>(create: (_) => MusicProvider()),
         ChangeNotifierProvider<BluetoothProvider>(
           create: (_) => BluetoothProvider(),
         ),

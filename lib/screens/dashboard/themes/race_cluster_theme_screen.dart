@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../models/obd_data.dart';
 import '../../../providers/dash_settings_provider.dart';
-import '../../../providers/music_provider.dart';
-import '../../../widget/music_hub.dart';
 
 class RaceClusterThemeScreen extends StatelessWidget {
   const RaceClusterThemeScreen({
@@ -118,66 +116,6 @@ class RaceClusterThemeScreen extends StatelessWidget {
                 },
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RaceMusicHub extends StatelessWidget {
-  const _RaceMusicHub();
-
-  @override
-  Widget build(BuildContext context) {
-    final music = context.watch<MusicProvider>();
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.music_note, color: Colors.white38, size: 16),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  music.trackTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  music.artistName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white38, fontSize: 10),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: Icon(
-              music.isPlaying ? Icons.pause : Icons.play_arrow,
-              color: Colors.white70,
-              size: 20,
-            ),
-            onPressed: music.playPause,
-          ),
-          IconButton(
-            icon: const Icon(Icons.skip_next, color: Colors.white70, size: 20),
-            onPressed: music.next,
           ),
         ],
       ),

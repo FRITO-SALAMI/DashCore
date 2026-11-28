@@ -24,12 +24,31 @@ class DashboardBackground extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    if (image == 'CARBON_LOCAL' || image == 'STARS_LOCAL') {
+    if (image == 'CARBON_LOCAL') {
+      return Positioned.fill(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: const Alignment(0, -.55),
+              radius: 1.15,
+              colors: [
+                const Color(
+                  0xFF466078,
+                ).withValues(alpha: opacity.clamp(0.0, .28)),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (image == 'STARS_LOCAL') {
       return Positioned.fill(
         child: Opacity(
           opacity: opacity.clamp(0.0, 1.0),
           child: RepaintBoundary(
-            child: CustomPaint(painter: _LocalTexture(image == 'STARS_LOCAL')),
+            child: CustomPaint(painter: const _LocalStars()),
           ),
         ),
       );
@@ -100,37 +119,24 @@ class DashboardBackground extends StatelessWidget {
   }
 }
 
-class _LocalTexture extends CustomPainter {
-  const _LocalTexture(this.stars);
-  final bool stars;
+class _LocalStars extends CustomPainter {
+  const _LocalStars();
+
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF94AABE)
-      ..strokeWidth = 1;
-    if (stars) {
-      for (var i = 0; i < 80; i++) {
-        canvas.drawCircle(
-          Offset(
-            (i * 137.51 % 997) / 997 * size.width,
-            (i * 83.17 % 503) / 503 * size.height,
-          ),
-          i % 9 == 0 ? 1.5 : .7,
-          paint,
-        );
-      }
-    } else {
-      for (double x = -size.height; x < size.width; x += 12) {
-        canvas.drawLine(
-          Offset(x, size.height),
-          Offset(x + size.height, 0),
-          paint,
-        );
-      }
+    final paint = Paint();
+    for (var i = 0; i < 80; i++) {
+      paint.color = const Color(
+        0xFFCFDEF1,
+      ).withValues(alpha: .25 + i % 9 * .08);
+      canvas.drawCircle(
+        Offset((i * .618034 % 1) * size.width, (i * .414214 % 1) * size.height),
+        i % 13 == 0 ? 1.45 : .65,
+        paint,
+      );
     }
   }
 
   @override
-  bool shouldRepaint(covariant _LocalTexture oldDelegate) =>
-      stars != oldDelegate.stars;
+  bool shouldRepaint(covariant _LocalStars oldDelegate) => false;
 }
